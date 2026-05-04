@@ -1166,8 +1166,17 @@ tr:hover td{background:var(--gray-50)}
 
       <p class="err-msg" id="login-err">اسم المستخدم أو كلمة السر غير صحيحة</p>
 
-      <!-- API setup -->
-      <div class="api-setup" style="margin-top:1.5rem">
+      <!-- زر مخفي لفتح إعدادات الربط -->
+      <div style="margin-top:1.5rem;text-align:center">
+        <span id="api-unlock-btn" onclick="unlockApiSetup()"
+          style="display:inline-block;width:8px;height:8px;border-radius:50%;
+                 background:rgba(150,140,120,.25);cursor:pointer;
+                 transition:all .2s ease"
+          title=""></span>
+      </div>
+
+      <!-- API setup - مخفي افتراضياً -->
+      <div class="api-setup" id="api-setup-box" style="margin-top:0.75rem;display:none">
         <strong>⚙️ ربط Google Sheets</strong>
         <div class="api-row">
           <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/.../exec"
@@ -2055,6 +2064,30 @@ function startClock() {
 // ══════════════════════════════════════
 //  API
 // ══════════════════════════════════════
+async function unlockApiSetup() {
+  var pass = prompt('أدخل كلمة السر للوصول إلى إعدادات الربط:');
+  if (!pass) return;
+  var granted = false;
+  // إذا في رابط API، تحقق منه
+  if (API_URL) {
+    try {
+      var res = await api({ action: 'login', password: pass });
+      granted = res && res.success;
+    } catch(e) {
+      granted = false;
+    }
+  }
+  // إذا ما في رابط (أول إعداد)، استخدم الباسوورد المبرمج مؤقتاً
+  if (!API_URL && pass === 'admin123') granted = true;
+
+  if (granted) {
+    document.getElementById('api-setup-box').style.display = 'block';
+    document.getElementById('api-unlock-btn').style.display = 'none';
+    document.getElementById('api-url-input').value = API_URL || '';
+  } else {
+    alert('كلمة السر غلط ❌');
+  }
+}
 function saveApiUrl() {
   API_URL = document.getElementById('api-url-input').value.trim();
   localStorage.setItem('sumer_api_url', API_URL);
@@ -2147,6 +2180,9 @@ async function doLogin() {
       mgrPassword = pass;
       showScreen('manager');
       requestNotifPermission();
+      const _today = localDate(new Date());
+      document.getElementById('m-from').value = _today;
+      document.getElementById('m-to').value   = _today;
       loadOrders().then(() => startOrdersAutoRefresh());
     } else {
       document.getElementById('login-err').style.display = 'block';
@@ -2441,7 +2477,14 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   if (name==='dashboard') startDashboardAutoRefresh();
   else stopDashboardAutoRefresh();
-  if (name==='orders') startOrdersAutoRefresh();
+  if (name==='orders') {
+    if (!document.getElementById('m-from').value && !document.getElementById('m-to').value) {
+      const today = localDate(new Date());
+      document.getElementById('m-from').value = today;
+      document.getElementById('m-to').value   = today;
+    }
+    loadOrders().then(() => startOrdersAutoRefresh());
+  }
   else stopOrdersAutoRefresh();
   if (name==='reports') {
     const t=localDate(new Date()), f=new Date(); f.setDate(f.getDate()-30);
@@ -2536,7 +2579,7 @@ async function silentRefreshOrders() {
 function startOrdersAutoRefresh() {
   allOrders.forEach(o => { if (o.status === 'تم التسليم') _mgrKnownDelivered.add(o.rowIndex); });
   if (ordersInterval) clearInterval(ordersInterval);
-  ordersInterval = setInterval(silentRefreshOrders, 30000);
+  ordersInterval = setInterval(silentRefreshOrders, 10000);
 }
 
 function stopOrdersAutoRefresh() {
@@ -2960,7 +3003,10 @@ async function loadHistoryOrders() {
 function renderHistoryOrders() {
   const daysAgo   = parseInt(document.getElementById('hist-date-filter').value) || 0;
   const targetDate = getTargetDateStr(daysAgo);
-  const filtered  = historyOrders.filter(o => o.date === targetDate);
+  // أحدث أولاً
+  const filtered  = [...historyOrders]
+    .filter(o => o.date === targetDate)
+    .reverse();
   const cont      = document.getElementById('hist-cards-container');
   const badge     = document.getElementById('hist-count-badge');
   badge.textContent = filtered.length ? filtered.length + ' طلب' : '';
@@ -2971,55 +3017,89 @@ function renderHistoryOrders() {
   }
 
   const STATUS_COLOR = {
-    'خارج':       { bg:'var(--warn-lt)',    color:'var(--warn)',    dot:'var(--warn)'    },
-    'تم التسليم': { bg:'var(--success-lt)', color:'var(--success)', dot:'var(--success)' },
-    'ملغي':       { bg:'var(--danger-lt)',  color:'var(--danger)',  dot:'var(--danger)'  }
+    'خارج':       { bg:'#fff7ed', color:'#b45309', dot:'#f59e0b' },
+    'تم التسليم': { bg:'#f0fdf4', color:'#166534', dot:'#22c55e' },
+    'ملغي':       { bg:'#fef2f2', color:'#991b1b', dot:'#ef4444' }
   };
 
-  cont.innerHTML = filtered.map(o => {
-    const sc = STATUS_COLOR[o.status] || STATUS_COLOR['خارج'];
-    return `
-    <div style="background:var(--white);border-radius:var(--r-lg);border:1px solid var(--gray-200);
-                box-shadow:var(--sh-sm);margin-bottom:.75rem;overflow:hidden">
-      <!-- header -->
-      <div style="background:var(--gray-800);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-family:monospace;font-size:13px;font-weight:800;color:#fff;letter-spacing:1px">${o.orderNum||'—'}</span>
-        <span style="background:${sc.bg};color:${sc.color};border-radius:20px;padding:3px 10px;
-                     font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px">
-          <span style="width:6px;height:6px;border-radius:50%;background:${sc.dot};display:inline-block"></span>
-          ${o.status}
-        </span>
-      </div>
-      <!-- body -->
-      <div style="padding:.85rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem">
-        ${histRow('👤 الزبون',    o.customer||'—')}
-        ${histRow('📞 الهاتف',    o.phone||'—')}
-        ${histRow('📍 المنطقة',   o.area ? o.area + (o.zone ? ' <span style="font-size:10px;opacity:.7">(زون '+o.zone+')</span>' : '') : '—')}
-        ${histRow('🚗 السائق',    o.driver||'—')}
-        ${histRow('🕐 وقت التوصيل المطلوب', fmtTime(o.outTime))}
-        ${histRow('📝 وقت التسجيل', fmtTime(o.registeredAt))}
-        ${histRow('💵 الفاتورة',  o.amount   ? Number(o.amount).toLocaleString('en-US')   + ' د.ع' : '—')}
-        ${histRow('🚚 التوصيل',   o.delivery ? Number(o.delivery).toLocaleString('en-US') + ' د.ع' : '—')}
-        ${histRowFull('🧾 تفاصيل الطلب', o.items||'—')}
-        ${o.address ? histRowFull('🏠 العنوان', o.address) : ''}
-        ${o.notes   ? histRowFull('📝 ملاحظات', o.notes)   : ''}
-      </div>
-      <!-- footer total -->
-      <div style="background:${o.status==='ملغي'?'var(--danger)':o.status==='تم التسليم'?'var(--success)':'var(--accent)'};padding:.55rem 1rem;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:11px;color:rgba(255,255,255,.75);font-weight:700">المجموع الكلي</span>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:16px;font-weight:900;color:#fff">${Number(o.total||0).toLocaleString('en-US')} د.ع</span>
-          ${o.status !== 'ملغي' && o.status !== 'تم التسليم' ? `
-          <button onclick="empCancelOrder(${o.rowIndex},'${o.orderNum}',this)"
-            style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.5);
-                   color:#fff;border-radius:8px;padding:5px 12px;font-family:var(--font);
-                   font-size:11px;font-weight:800;cursor:pointer">
-            ❌ إلغاء
-          </button>` : `<span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.9)">${o.status==='ملغي'?'❌ ملغي':'✅ مسلّم'}</span>`}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  cont.innerHTML = `
+  <div style="background:var(--white);border-radius:var(--r-lg);border:1px solid var(--gray-200);overflow:hidden;box-shadow:var(--sh-sm)">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--gray-800);color:#fff">
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">#</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800">الزبون</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المنطقة</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">الوقت</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المجموع</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">الحالة</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map((o, i) => {
+          const sc = STATUS_COLOR[o.status] || STATUS_COLOR['خارج'];
+          const isCancel = o.status !== 'ملغي' && o.status !== 'تم التسليم';
+          return `
+          <tr style="border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .15s"
+            onmouseover="this.style.background='var(--gray-50)'"
+            onmouseout="this.style.background=''"
+            onclick="toggleHistRow('hr-${i}',this)">
+            <td style="padding:10px 12px;font-family:monospace;font-weight:800;font-size:12px;color:var(--accent);white-space:nowrap">${o.orderNum||'—'}</td>
+            <td style="padding:10px 12px;font-weight:700;color:var(--gray-800)">${o.customer||'—'}<br><span style="font-size:11px;color:var(--gray-400);font-weight:500">${o.phone||''}</span></td>
+            <td style="padding:10px 12px;font-weight:600;color:var(--gray-600);white-space:nowrap">${o.area||'—'}</td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--gray-500);white-space:nowrap">${fmtTime(o.outTime)||'—'}</td>
+            <td style="padding:10px 12px;font-weight:800;color:var(--gray-800);white-space:nowrap">${Number(o.total||0).toLocaleString('en-US')} د.ع</td>
+            <td style="padding:10px 12px">
+              <span style="background:${sc.bg};color:${sc.color};border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px">
+                <span style="width:5px;height:5px;border-radius:50%;background:${sc.dot}"></span>${o.status}
+              </span>
+            </td>
+            <td style="padding:10px 12px">
+              ${isCancel ? `<button onclick="event.stopPropagation();empCancelOrder(${o.rowIndex},'${o.orderNum}',this)"
+                style="background:var(--danger);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:var(--font);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">إلغاء</button>` : ''}
+            </td>
+          </tr>
+          <tr id="hr-${i}" style="display:none;background:var(--gray-50)">
+            <td colspan="7" style="padding:12px 16px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+                ${o.driver   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚗 السائق</span><br><span style="font-size:13px;font-weight:800">${o.driver}</span></div>` : ''}
+                ${o.amount   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">💵 الفاتورة</span><br><span style="font-size:13px;font-weight:800">${Number(o.amount).toLocaleString('en-US')} د.ع</span></div>` : ''}
+                ${o.delivery ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚚 التوصيل</span><br><span style="font-size:13px;font-weight:800">${Number(o.delivery).toLocaleString('en-US')} د.ع</span></div>` : ''}
+                ${o.registeredAt ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">⏱ وقت التسجيل</span><br><span style="font-size:13px;font-weight:800">${fmtTime(o.registeredAt)}</span></div>` : ''}
+                ${o.deliveredAt && o.deliveredAt !== '—' ? `<div><span style="font-size:10px;color:var(--success);font-weight:700">✅ وقت التسليم</span><br><span style="font-size:13px;font-weight:900;color:var(--success)">${fmtTime(o.deliveredAt)}</span></div>` : ''}
+                ${o.address  ? `<div style="grid-column:1/-1"><span style="font-size:10px;color:var(--gray-400);font-weight:700">🏠 العنوان</span><br><span style="font-size:13px;font-weight:700">${o.address}</span></div>` : ''}
+                ${o.items    ? `<div style="grid-column:1/-1"><span style="font-size:10px;color:var(--gray-400);font-weight:700">🧾 تفاصيل الطلب</span><br><span style="font-size:13px;font-weight:700">${o.items}</span></div>` : ''}
+                ${o.notes    ? `<div style="grid-column:1/-1"><span style="font-size:10px;color:var(--gray-400);font-weight:700">📝 ملاحظات</span><br><span style="font-size:13px;font-weight:700">${o.notes}</span></div>` : ''}
+                ${o.deliveryLat && o.deliveryLng ? `<div style="grid-column:1/-1">
+                  <span style="font-size:10px;color:var(--gray-400);font-weight:700">📍 موقع التسليم</span><br>
+                  <div style="margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200);box-shadow:var(--sh-sm)">
+                    <iframe
+                      src="https://maps.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}&z=16&output=embed"
+                      width="100%" height="200" style="border:0;display:block" loading="lazy"
+                      allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    <div style="padding:8px 12px;background:var(--white);display:flex;align-items:center;justify-content:space-between">
+                      <span style="font-size:11px;color:var(--gray-500)">${o.deliveryLat}, ${o.deliveryLng}</span>
+                      <a href="https://www.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}" target="_blank"
+                        style="font-size:11px;font-weight:800;color:var(--accent);text-decoration:none">فتح في الخريطة ↗</a>
+                    </div>
+                  </div>
+                </div>` : ''}
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function toggleHistRow(id, row) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'table-row';
+  row.style.background = isOpen ? '' : 'var(--accent-lt)';
 }
 
 async function empCancelOrder(rowIndex, orderNum, btn) {
@@ -3571,8 +3651,12 @@ async function loadCustomerStats() {
     orders.forEach(o => {
       if (!o.outTime) return;
       try {
-        const d = new Date(o.outTime);
-        if (!isNaN(d)) hourMap[d.getHours()]++;
+        // outTime يجي بصيغة HH:mm مثل 14:30
+        const parts = String(o.outTime).match(/^(\d{1,2}):(\d{2})/);
+        if (parts) {
+          const h = parseInt(parts[1]);
+          if (h >= 0 && h < 24) hourMap[h]++;
+        }
       } catch(e) {}
     });
     const maxH = Math.max(...Object.values(hourMap), 1);
@@ -3722,6 +3806,8 @@ function openOrderModal(rowIndex) {
       <span style="font-size:13px;font-weight:600;color:var(--gray-700)">${val||'—'}</span>
     </div>`;
   document.getElementById('om-details-grid').innerHTML =
+    row('📅 التاريخ',        o.date) +
+    row('📅 التاريخ',        o.date) +
     row('👤 الزبون',        o.customer) +
     row('📞 الهاتف',        o.phone) +
     row('🧾 رقم الفاتورة',  o.invoice) +
@@ -3734,7 +3820,17 @@ function openOrderModal(rowIndex) {
     row('🕐 وقت التوصيل المطلوب',   fmtTime(o.outTime)) +
     row('🚗 وقت استلام السائق',     fmtTime(o.driverTime)) +
     (o.deliveredAt ? histRowFull('✅ وقت استلام الزبون للطلب', '<span style="color:var(--success);font-weight:800;font-size:14px">✅ ' + fmtTime(o.deliveredAt) + '</span>') : '') +
-    (o.deliveryLat && o.deliveryLng ? histRowFull('📍 موقع التسليم', `<a href="https://www.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent-md);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:800;text-decoration:none">📍 عرض على الخريطة</a>`) : '') +
+    (o.deliveryLat && o.deliveryLng ? histRowFull('📍 موقع التسليم', `
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--gray-200);box-shadow:var(--sh-sm);margin-top:4px">
+        <iframe src="https://maps.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}&z=16&output=embed"
+          width="100%" height="220" style="border:0;display:block" loading="lazy"
+          allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <div style="padding:8px 12px;background:var(--white);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:11px;color:var(--gray-500)">${o.deliveryLat}, ${o.deliveryLng}</span>
+          <a href="https://www.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}" target="_blank"
+            style="font-size:11px;font-weight:800;color:var(--accent);text-decoration:none">فتح في الخريطة ↗</a>
+        </div>
+      </div>`) : '') +
     row('👨‍💼 الموظف',         o.employee) +
     row('💳 المجموع الكلي', Number(o.total||0).toLocaleString('en-US')+' د.ع') +
     row('📊 الحالة',        o.status) +
