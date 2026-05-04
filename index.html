@@ -1136,21 +1136,15 @@ tr:hover td{background:var(--gray-50)}
       <!-- حقول السائق -->
       <div class="pass-box" id="drv-pass-box">
         <div class="login-field">
-          <label class="login-label">اسم السائق</label>
-          <div class="login-input-wrap">
-            <span class="login-input-icon">🚗</span>
-            <input type="text" id="drv-user" placeholder="أدخل اسمك"
-              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="username">
-          </div>
-        </div>
-        <div class="login-field">
           <label class="login-label">كلمة السر</label>
           <div class="login-input-wrap">
             <span class="login-input-icon">🔑</span>
             <input type="password" id="drv-pass" placeholder="••••••••"
+              oninput="autoFillName('drv')"
               onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
           </div>
         </div>
+        <div id="drv-name-preview" style="display:none;background:var(--accent-lt);border:1px solid var(--accent-md);border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:800;color:var(--accent);text-align:center"></div>
       </div>
 
     <!-- حقول المدير -->
@@ -1468,6 +1462,7 @@ tr:hover td{background:var(--gray-50)}
     <button class="tab-btn" onclick="switchTab('zones',this)">📍 المناطق</button>
     <button class="tab-btn" onclick="switchTab('customers',this)">👥 الزبائن</button>
     <button class="tab-btn" onclick="switchTab('reports',this)">📄 التقارير</button>
+    <button class="tab-btn" onclick="switchTab('users',this)">🔐 معلومات الدخول</button>
   </div>
 
   <!-- بحث سريع عالمي -->
@@ -1970,6 +1965,57 @@ tr:hover td{background:var(--gray-50)}
 
 </div>
 
+  <!-- ═══════ تبويب معلومات الدخول ═══════ -->
+  <div id="tab-users" class="tab-pane">
+    <div class="mgr-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px">
+        <div>
+          <h2 style="font-size:16px;font-weight:900;color:var(--gray-800);margin:0">🔐 معلومات الدخول</h2>
+          <p style="font-size:11px;color:var(--gray-400);margin:3px 0 0">إدارة كلمات مرور الموظفين والسواق</p>
+        </div>
+      </div>
+
+      <!-- إضافة مستخدم جديد -->
+      <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="font-size:13px;font-weight:900;color:var(--gray-700);margin-bottom:12px">➕ إضافة مستخدم</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+          <div>
+            <label class="fl">الاسم</label>
+            <input type="text" id="new-user-name" class="fi" placeholder="اسم الموظف أو السائق">
+          </div>
+          <div>
+            <label class="fl">كلمة المرور</label>
+            <input type="text" id="new-user-pass" class="fi" placeholder="مثال: 1234">
+          </div>
+          <div>
+            <label class="fl">الدور</label>
+            <select id="new-user-role" class="fi">
+              <option value="employee">موظف</option>
+              <option value="driver">سائق</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="addUser()" style="height:40px;padding:0 20px">إضافة</button>
+        </div>
+      </div>
+
+      <!-- جدول المستخدمين -->
+      <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>#</th><th>الاسم</th><th>كلمة المرور</th><th>الدور</th><th>إجراء</th>
+            </tr></thead>
+            <tbody id="users-tbody">
+              <tr><td class="empty-td" colspan="5"><span class="spinner"></span> جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 <script>
 // ══════════════════════════════════════
 //  CONSTANTS & STATE
@@ -2071,18 +2117,38 @@ function selectRole(role) {
   document.getElementById('emp-pass-box').classList.toggle('show', role==='employee');
   document.getElementById('drv-pass-box').classList.toggle('show', role==='driver');
 }
+async function autoFillName(role) {
+  const passEl = document.getElementById(role+'-pass');
+  const preview = document.getElementById(role+'-name-preview');
+  const pass = passEl.value;
+  if (!pass) { preview.style.display='none'; return; }
+  const user = await getUserByPassword(pass);
+  if (user && user.role === role) {
+    preview.style.display = 'block';
+    preview.textContent = '👤 ' + user.name;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
 async function doLogin() {
   document.getElementById('login-err').style.display = 'none';
   if (!selectedRole) { alert('اختر موظف أو مدير'); return; }
   if (selectedRole === 'employee') {
-    const uVal = document.getElementById('emp-user').value.trim();
     const pVal = document.getElementById('emp-pass').value;
-    const emp = EMPLOYEES.find(e => e.username === uVal && e.password === pVal);
-    if (!emp) { document.getElementById('login-err').textContent='اسم المستخدم أو كلمة السر غير صحيحة'; document.getElementById('login-err').style.display='block'; return; }
-    currentEmployee = uVal;
+    document.getElementById('login-btn').disabled = true;
+    document.getElementById('login-btn-text').textContent = '⏳ جاري التحقق...';
+    const user = await getUserByPassword(pVal);
+    document.getElementById('login-btn').disabled = false;
+    document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
+    if (!user || user.role !== 'employee') {
+      document.getElementById('login-err').textContent='كلمة السر غير صحيحة';
+      document.getElementById('login-err').style.display='block'; return;
+    }
+    currentEmployee = user.name;
     showScreen('employee');
-    document.getElementById('emp-name-badge').textContent  = '👤 ' + uVal;
-    document.getElementById('emp-topbar-name').textContent = '👤 ' + uVal + ' · قسم الديليفري';
+    document.getElementById('emp-name-badge').textContent  = '👤 ' + user.name;
+    document.getElementById('emp-topbar-name').textContent = '👤 ' + user.name + ' · قسم الديليفري';
     switchEmpTab('form', document.getElementById('emp-tab-btn-form'));
     await loadAreasData();
     fillAreaSelect();
@@ -2093,22 +2159,19 @@ async function doLogin() {
   }
   // ── سائق ──
   if (selectedRole === 'driver') {
-    const drvUser = document.getElementById('drv-user').value.trim();
     const drvPass = document.getElementById('drv-pass').value;
-    if (!drvUser || !drvPass) { document.getElementById('login-err').textContent='أدخل الاسم وكلمة السر'; document.getElementById('login-err').style.display='block'; return; }
-    // اجلب السواق من الـ API مباشرة بدل الاعتماد على القائمة المحملة مسبقاً
     document.getElementById('login-btn').disabled = true;
-    document.getElementById('login-btn').textContent = '⏳ جاري التحقق...';
-    try {
-      await loadDriversList();
-    } catch(e) {}
+    document.getElementById('login-btn-text').textContent = '⏳ جاري التحقق...';
+    const user = await getUserByPassword(drvPass);
     document.getElementById('login-btn').disabled = false;
-    document.getElementById('login-btn').textContent = 'تسجيل الدخول ←';
-    const drv = DRIVERS.find(d => d.username === drvUser && d.password === drvPass);
-    if (!drv) { document.getElementById('login-err').textContent='اسم السائق أو كلمة السر غير صحيحة'; document.getElementById('login-err').style.display='block'; return; }
-    currentDriver = drvUser;
+    document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
+    if (!user || user.role !== 'driver') {
+      document.getElementById('login-err').textContent='كلمة السر غير صحيحة';
+      document.getElementById('login-err').style.display='block'; return;
+    }
+    currentDriver = user.name;
     showScreen('driver');
-    document.getElementById('drv-topbar-name').textContent = '🚗 ' + drvUser;
+    document.getElementById('drv-topbar-name').textContent = '🚗 ' + user.name;
     startDrvClock();
     loadDriverOrders().then(() => startDriverPolling());
     requestNotifPermission();
@@ -2133,9 +2196,10 @@ async function doLogin() {
 function goLogin() {
   stopOrdersAutoRefresh(); stopDriverPolling();
   showScreen('login'); mgrPassword=''; selectedRole=''; currentEmployee=''; currentDriver='';
-  document.getElementById('emp-user').value=''; document.getElementById('emp-pass').value='';
-  if(document.getElementById('drv-user')) document.getElementById('drv-user').value='';
+  document.getElementById('emp-pass').value='';
+  document.getElementById('emp-name-preview').style.display='none';
   if(document.getElementById('drv-pass')) document.getElementById('drv-pass').value='';
+  if(document.getElementById('drv-name-preview')) document.getElementById('drv-name-preview').style.display='none';
   document.getElementById('mgr-pass').value='';
   document.getElementById('pass-box').classList.remove('show');
   ['rc-emp','rc-mgr'].forEach(id=>document.getElementById(id).classList.remove('selected'));
@@ -2301,6 +2365,105 @@ function clearEmpForm() {
 // ══════════════════════════════════════
 //  MANAGER TABS
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+//  USERS MANAGEMENT
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+//  USERS — من Google Sheet
+// ══════════════════════════════════════
+let usersData = [];
+
+async function loadUsers() {
+  const tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = '<tr><td class="empty-td" colspan="5"><span class="spinner"></span> جاري التحميل...</td></tr>';
+  try {
+    const r = await api({ action: 'getUsers', password: mgrPassword });
+    if (!r.success) throw new Error(r.msg);
+    usersData = r.users;
+    renderUsers();
+  } catch(e) {
+    tbody.innerHTML = '<tr><td class="empty-td" colspan="5" style="color:var(--danger)">تعذر التحميل</td></tr>';
+  }
+}
+
+function renderUsers() {
+  const tbody = document.getElementById('users-tbody');
+  if (!usersData.length) {
+    tbody.innerHTML = '<tr><td class="empty-td" colspan="5">لا يوجد مستخدمين — أضف الأول</td></tr>';
+    return;
+  }
+  tbody.innerHTML = usersData.map((u, i) => `
+    <tr>
+      <td style="color:var(--gray-400);font-size:11px;text-align:center">${i+1}</td>
+      <td style="font-weight:800;color:var(--gray-900)">${u.name}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="pass-display-${i}" style="font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:2px">••••••</span>
+          <button onclick="togglePassView(${i})" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:13px">👁</button>
+          <button onclick="editUserPass(${i})" style="background:none;border:1px solid var(--gray-200);border-radius:5px;cursor:pointer;color:var(--accent);font-size:11px;padding:2px 8px;font-family:var(--font)">تعديل</button>
+        </div>
+      </td>
+      <td>
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;
+          background:${u.role==='driver'?'var(--accent-lt)':'var(--success-lt)'};
+          color:${u.role==='driver'?'var(--accent)':'var(--success)'}">
+          ${u.role==='driver'?'🚗 سائق':'👤 موظف'}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser(${i})">حذف</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function togglePassView(i) {
+  const el = document.getElementById('pass-display-'+i);
+  el.textContent = el.textContent === '••••••' ? usersData[i].password : '••••••';
+}
+
+async function editUserPass(i) {
+  const newPass = prompt('كلمة المرور الجديدة لـ ' + usersData[i].name + ':', usersData[i].password);
+  if (newPass === null || newPass.trim() === '') return;
+  try {
+    const r = await api({ action:'editUser', password:mgrPassword, name:usersData[i].name, newPassword:newPass.trim(), role:usersData[i].role });
+    if (r.success) { await loadUsers(); }
+    else alert('فشل التعديل: ' + r.msg);
+  } catch(e) { alert('تعذر الاتصال'); }
+}
+
+async function addUser() {
+  const name = document.getElementById('new-user-name').value.trim();
+  const pass = document.getElementById('new-user-pass').value.trim();
+  const role = document.getElementById('new-user-role').value;
+  if (!name || !pass) { alert('يرجى تعبئة الاسم وكلمة المرور'); return; }
+  try {
+    const r = await api({ action:'addUser', password:mgrPassword, name, userPassword:pass, role });
+    if (r.success) {
+      document.getElementById('new-user-name').value = '';
+      document.getElementById('new-user-pass').value = '';
+      await loadUsers();
+    } else alert('فشل الإضافة: ' + r.msg);
+  } catch(e) { alert('تعذر الاتصال'); }
+}
+
+async function deleteUser(i) {
+  if (!confirm('حذف المستخدم "' + usersData[i].name + '"؟')) return;
+  try {
+    const r = await api({ action:'deleteUser', password:mgrPassword, name:usersData[i].name });
+    if (r.success) { await loadUsers(); }
+    else alert('فشل الحذف: ' + r.msg);
+  } catch(e) { alert('تعذر الاتصال'); }
+}
+
+async function getUserByPassword(pass) {
+  try {
+    const r = await api({ action:'loginUser', password: pass });
+    if (r.success) return r.user;
+    return null;
+  } catch(e) { return null; }
+}
+
 function switchTab(name, btn) {
   globalSearchClear(); // إغلاق نتائج البحث عند الانتقال لتبويب آخر
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
@@ -2326,6 +2489,7 @@ function switchTab(name, btn) {
   if (name==='stats')      loadStats();
   if (name==='zones')      loadZonesMgmt();
   if (name==='incentives') { loadIncentivesTab(); }
+  if (name==='users')      { loadUsers(); }
 }
 
 // ══════════════════════════════════════
