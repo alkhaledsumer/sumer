@@ -1458,6 +1458,7 @@ tr:hover td{background:var(--gray-50)}
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
+      <button id="notif-status-btn" class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.55);font-size:18px;padding:4px 8px;line-height:1" onclick="testNotifPermission()" title="حالة الإشعارات">🔔</button>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.7)" onclick="goLogin()">🚪 خروج</button>
     </div>
   </div>
@@ -2190,8 +2191,9 @@ async function doLogin() {
   } catch(e) { alert('تعذر الاتصال، تحقق من الرابط'); }
 }
 function goLogin() {
-  stopOrdersAutoRefresh(); stopDriverPolling();
+  stopAllMgrPolling(); stopDriverPolling();
   showScreen('login'); mgrPassword=''; selectedRole=''; currentEmployee=''; currentDriver='';
+  _mgrKnownOrders.clear(); _mgrKnownDelivered.clear();
   document.getElementById('emp-pass').value='';
   document.getElementById('emp-name-preview').style.display='none';
   if(document.getElementById('drv-pass')) document.getElementById('drv-pass').value='';
@@ -2508,20 +2510,109 @@ function switchTab(name, btn) {
 // ══════════════════════════════════════
 
 async function requestNotifPermission() {
-  if (!('Notification' in window)) return false;
+  if (!('Notification' in window)) {
+    console.warn('هذا المتصفح لا يدعم الإشعارات');
+    return false;
+  }
   if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
+  if (Notification.permission === 'denied') {
+    // أظهر تحذير للمستخدم
+    _showNotifDeniedBanner();
+    return false;
+  }
+  // اطلب الإذن
   const result = await Notification.requestPermission();
-  return result === 'granted';
+  if (result === 'granted') {
+    // تأكيد بصري
+    _showNotifGrantedToast();
+    return true;
+  } else {
+    _showNotifDeniedBanner();
+    return false;
+  }
 }
 
-function sendNotif(title, body) {
+function _showNotifGrantedToast() {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99999;background:#1e6840;color:#fff;border-radius:12px;padding:10px 20px;font-family:Cairo,sans-serif;font-size:13px;font-weight:800;box-shadow:0 4px 20px rgba(0,0,0,.2);white-space:nowrap';
+  t.textContent = '🔔 الإشعارات مفعّلة ✅';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function _showNotifDeniedBanner() {
+  if (document.getElementById('notif-denied-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'notif-denied-banner';
+  b.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99999;background:#7c1e1e;color:#fff;border-radius:14px;padding:12px 18px;font-family:Cairo,sans-serif;max-width:340px;width:90%;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:12px';
+  b.innerHTML = `
+    <span style="font-size:22px">🔕</span>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:900">الإشعارات محجوبة</div>
+      <div style="font-size:11px;opacity:.8;margin-top:3px">افتح إعدادات المتصفح وأذّن الإشعارات لهذا الموقع</div>
+    </div>
+    <button onclick="document.getElementById('notif-denied-banner').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 10px;font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">✕</button>`;
+  document.body.appendChild(b);
+  setTimeout(() => { const el = document.getElementById('notif-denied-banner'); if(el) el.remove(); }, 8000);
+}
+
+async function testNotifPermission() {
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  if (perm === 'granted') {
+    // أرسل إشعار تجريبي
+    sendNotif('🔔 الإشعارات تعمل!', 'سيصلك إشعار لكل طلب جديد أو تسليم', 'test-notif');
+    _updateNotifBell(true);
+  } else if (perm === 'denied') {
+    _showNotifDeniedBanner();
+    _updateNotifBell(false);
+  } else {
+    // اطلب الإذن
+    const granted = await requestNotifPermission();
+    _updateNotifBell(granted);
+  }
+}
+
+function _updateNotifBell(active) {
+  ['notif-status-btn','drv-notif-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = active ? '🔔' : '🔕';
+    el.style.opacity = active ? '1' : '0.5';
+    el.title = active ? 'الإشعارات مفعّلة — اضغط للاختبار' : 'الإشعارات محجوبة — اضغط للتفعيل';
+  });
+}
+
+// تحديث أيقونة الجرس عند التحميل
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    if ('Notification' in window) _updateNotifBell(Notification.permission === 'granted');
+  }, 1500);
+});
+
+function sendNotif(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const icon = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>');
-  const n = new Notification(title, { body, icon, requireInteraction: true });
   playNotifSound();
-  setTimeout(() => n.close(), 10000);
-  return n;
+  const _icon = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>');
+  const _notifTag = tag || ('sumer-' + Date.now());
+
+  // الطريقة الأفضل: showNotification عبر SW (تشتغل لما التطبيق في الخلفية)
+  const swReg = window._swReg || null;
+  if (swReg) {
+    swReg.showNotification(title, {
+      body, icon: _icon, tag: _notifTag,
+      requireInteraction: true, vibrate: [200, 100, 200], renotify: true
+    }).catch(() => {
+      try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
+    });
+    // أيضاً أبلّغ SW نفسه عبر message
+    if (swReg.active) swReg.active.postMessage({ type: 'SHOW_NOTIF', title, body, tag: _notifTag });
+  } else {
+    // fallback: إشعار عادي — يشتغل بس التطبيق مفتوح
+    try {
+      const n = new Notification(title, { body, icon: _icon, requireInteraction: true });
+      setTimeout(() => n.close(), 12000);
+    } catch(e) {}
+  }
 }
 
 function playNotifSound() {
@@ -2541,33 +2632,62 @@ function playNotifSound() {
   } catch(e) {}
 }
 
-// ── للمدير: مراقبة التسليمات الجديدة ──
+// ── للمدير: مراقبة الطلبات الجديدة والتسليمات ──
 let _mgrKnownDelivered = new Set();
-let ordersInterval = null;
+let _mgrKnownOrders    = new Set(); // لرصد الطلبات الجديدة
+let ordersInterval     = null;
+let _mgrBgInterval     = null;      // interval في الخلفية — يشتغل دايماً بغض النظر عن التبويب
 
 async function silentRefreshOrders() {
+  if (!mgrPassword) return;
   try {
-    const r = await api({ action:'getOrders', password:mgrPassword,
-      from:document.getElementById('m-from').value,
-      to:document.getElementById('m-to').value });
+    const today = localDate(new Date());
+    // استخدم تاريخ اليوم دايماً للإشعارات (حتى لو المدير فلتر تاريخ آخر)
+    const r = await api({ action:'getOrders', password:mgrPassword, from:today, to:today });
     if (!r.success) return;
-    // اكتشف التسليمات الجديدة وأرسل إشعار
-    if (allOrders.length > 0) {
+
+    if (_mgrKnownOrders.size > 0) {
       r.orders.forEach(o => {
+        // طلب جديد كلياً
+        if (!_mgrKnownOrders.has(o.rowIndex)) {
+          sendNotif('📦 طلب جديد!',
+            'طلب ' + o.orderNum + '\nالزبون: ' + o.customer + '\nالسائق: ' + (o.driver||'—') + ' — ' + (o.area||''),
+            'mgr-new-' + o.rowIndex);
+        }
+        // حالة تغيرت لـ "تم التسليم"
         if (o.status === 'تم التسليم' && !_mgrKnownDelivered.has(o.rowIndex)) {
           const old = allOrders.find(x => x.rowIndex === o.rowIndex);
-          if (old && old.status !== 'تم التسليم') {
-            sendNotif('✅ تم التسليم', o.driver + ' سلّم طلب ' + o.orderNum + '\nالزبون: ' + o.customer + ' — ' + o.area);
+          if (!old || old.status !== 'تم التسليم') {
+            sendNotif('✅ تم التسليم',
+              (o.driver||'السائق') + ' سلّم طلب ' + o.orderNum + '\nالزبون: ' + o.customer + ' — ' + (o.area||''),
+              'mgr-done-' + o.rowIndex);
           }
         }
       });
     }
-    // حدّث القائمة المعروفة
-    r.orders.forEach(o => { if (o.status === 'تم التسليم') _mgrKnownDelivered.add(o.rowIndex); });
-    allOrders = r.orders;
-    populateFilters(); renderOrders();
+
+    // حدّث المجموعات المعروفة
+    r.orders.forEach(o => {
+      _mgrKnownOrders.add(o.rowIndex);
+      if (o.status === 'تم التسليم') _mgrKnownDelivered.add(o.rowIndex);
+    });
+
+    // حدّث الجدول بس لو تبويب الطلبات نشط
+    const ordersTabActive = document.getElementById('tab-orders')?.classList.contains('active');
+    if (ordersTabActive) {
+      // حافظ على فلاتر التاريخ اللي اختارها المدير
+      const fromVal = document.getElementById('m-from')?.value || today;
+      const toVal   = document.getElementById('m-to')?.value   || today;
+      if (fromVal === today && toVal === today) {
+        allOrders = r.orders;
+        populateFilters(); renderOrders();
+      } else {
+        // إذا المدير شايف تاريخ آخر، حدّث بهدوء بدون تغيير allOrders
+      }
+    }
+
     if (currentModalOrder) {
-      const updated = allOrders.find(x => x.rowIndex === currentModalOrder.rowIndex);
+      const updated = (r.orders).find(x => x.rowIndex === currentModalOrder.rowIndex);
       if (updated && updated.status !== currentModalOrder.status) {
         currentModalOrder.status = updated.status;
         openOrderModal(updated.rowIndex);
@@ -2577,13 +2697,28 @@ async function silentRefreshOrders() {
 }
 
 function startOrdersAutoRefresh() {
-  allOrders.forEach(o => { if (o.status === 'تم التسليم') _mgrKnownDelivered.add(o.rowIndex); });
+  if (!mgrPassword) return;
+  // سجّل الطلبات الحالية كـ "معروفة" حتى لا نرسل إشعار عنها
+  allOrders.forEach(o => {
+    _mgrKnownOrders.add(o.rowIndex);
+    if (o.status === 'تم التسليم') _mgrKnownDelivered.add(o.rowIndex);
+  });
+  // interval للتبويب النشط (كل 10 ثواني)
   if (ordersInterval) clearInterval(ordersInterval);
   ordersInterval = setInterval(silentRefreshOrders, 10000);
+  // interval للخلفية (كل 20 ثانية) — يشتغل حتى لو غيّر التبويب
+  if (_mgrBgInterval) clearInterval(_mgrBgInterval);
+  _mgrBgInterval = setInterval(silentRefreshOrders, 20000);
 }
 
 function stopOrdersAutoRefresh() {
   if (ordersInterval) { clearInterval(ordersInterval); ordersInterval = null; }
+  // لا نوقف _mgrBgInterval — هو مستمر طول ما المدير مسجّل دخول
+}
+
+function stopAllMgrPolling() {
+  if (ordersInterval)  { clearInterval(ordersInterval);  ordersInterval  = null; }
+  if (_mgrBgInterval)  { clearInterval(_mgrBgInterval);  _mgrBgInterval  = null; }
 }
 
 // ── للسائق: مراقبة الطلبات الجديدة ──
@@ -3148,6 +3283,7 @@ function histRowFull(label, val) {
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="drv-time">--:--</span>
+      <button id="drv-notif-btn" class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.55);font-size:18px;padding:4px 8px;line-height:1;background:transparent;border-color:transparent" onclick="testNotifPermission()" title="حالة الإشعارات">🔔</button>
       <button class="btn btn-sm" style="background:var(--danger);color:#fff;border-color:var(--danger);font-weight:700" onclick="goLogin()">🚪 خروج</button>
     </div>
   </div>
@@ -5249,11 +5385,11 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closeAbout(); }
   document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
 })();
 
-// 2) Service Worker — offline + cache
+// 2) Service Worker — offline + cache + background notifications
 (function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   const swCode = `
-const CACHE = 'sumer-v1';
+const CACHE = 'sumer-v2';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
@@ -5276,11 +5412,62 @@ self.addEventListener('fetch', e => {
     })
   );
 });
+
+// استقبال رسائل من الصفحة لإرسال إشعار عبر SW
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SHOW_NOTIF') {
+    const { title, body, tag } = e.data;
+    e.waitUntil(
+      self.registration.showNotification(title, {
+        body,
+        tag: tag || 'sumer-notif',
+        icon: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>'),
+        badge: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1a5fa0"/><text x="32" y="44" font-size="36" text-anchor="middle">📦</text></svg>'),
+        requireInteraction: true,
+        vibrate: [200, 100, 200],
+        renotify: true
+      })
+    );
+  }
+});
+
+// عند الضغط على الإشعار — يفتح التطبيق
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
+});
 `;
   const blob = new Blob([swCode], { type: 'application/javascript' });
-  navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' })
-    .catch(e => console.warn('SW:', e));
+  const swUrl = URL.createObjectURL(blob);
+
+  navigator.serviceWorker.register(swUrl, { scope: './' })
+    .then(reg => {
+      console.log('SW registered:', reg.scope);
+      window._swReg = reg;
+    })
+    .catch(e => {
+      // blob: URL يفشل في بعض المتصفحات — نحاول طريقة بديلة
+      console.warn('SW blob failed, trying inline:', e);
+      _registerSWInline(swCode);
+    });
 })();
+
+// طريقة بديلة: Service Worker من data URL لو blob فشل
+function _registerSWInline(swCode) {
+  if (!('serviceWorker' in navigator)) return;
+  // نحاول نسجّل SW من نفس الملف (لو كان على سيرفر)
+  // أو نستخدم الإشعارات العادية فقط
+  navigator.serviceWorker.getRegistration('./').then(reg => {
+    if (reg) { window._swReg = reg; console.log('SW already registered'); }
+  }).catch(() => {});
+}
 
 // 3) بانر التثبيت
 let _deferredPrompt = null;
