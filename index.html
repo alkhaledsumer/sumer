@@ -1458,7 +1458,6 @@ tr:hover td{background:var(--gray-50)}
     <button class="tab-btn active" onclick="switchTab('orders',this)">📦 الطلبات</button>
     <button class="tab-btn" onclick="switchTab('stats',this)">📊 الإحصائيات</button>
     <button class="tab-btn" onclick="switchTab('incentives',this)">💰 الحوافز</button>
-    <button class="tab-btn" onclick="switchTab('drivers',this)">🚗 السواق</button>
     <button class="tab-btn" onclick="switchTab('zones',this)">📍 المناطق</button>
     <button class="tab-btn" onclick="switchTab('customers',this)">👥 الزبائن</button>
     <button class="tab-btn" onclick="switchTab('reports',this)">📄 التقارير</button>
@@ -1751,36 +1750,6 @@ tr:hover td{background:var(--gray-50)}
     </div>
   </div>
 
-  <!-- DRIVERS -->
-  <div id="tab-drivers" class="tab-pane">
-    <div class="mgr-body">
-      <!-- بطاقة كلمة السر -->
-      <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:var(--r-lg);
-                  padding:.85rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px">
-        <span style="font-size:22px">🔑</span>
-        <div>
-          <div style="font-size:12px;font-weight:800;color:#92400e">كلمة السر الثابتة لجميع السواق</div>
-          <div style="font-size:20px;font-weight:900;color:#b45309;font-family:monospace;letter-spacing:3px"
-               id="show-driver-pass">••••</div>
-          <div style="font-size:10px;color:#a16207;margin-top:2px">أعطِ هذه الكلمة لكل سائق جديد — السائق يسجل بـ <b>اسمه</b> + هذه الكلمة</div>
-        </div>
-        <button onclick="toggleDriverPass()" class="btn btn-sm"
-          style="margin-right:auto;background:#f59e0b;border-color:#f59e0b;color:#fff;font-size:11px">
-          👁 إظهار
-        </button>
-      </div>
-
-      <div class="table-card" style="padding:1.25rem">
-        <h3 style="font-size:14px;font-weight:800;color:var(--gray-700);margin-bottom:1rem">إدارة السواق</h3>
-        <div class="add-row">
-          <input type="text" id="new-driver-name" placeholder="اسم السائق الجديد">
-          <button class="btn btn-primary" onclick="addDriver()">+ إضافة</button>
-        </div>
-        <div id="driver-manage-list"><span class="spinner"></span> جاري التحميل...</div>
-      </div>
-    </div>
-  </div>
-
   <!-- ZONES -->
   <div id="tab-zones" class="tab-pane">
     <div class="mgr-body">
@@ -2035,17 +2004,9 @@ const EMPLOYEES = [
   { username: 'ناطق', password: '1675986' },
 ];
 
-// كلمة السر الثابتة لجميع السواق
-const DRIVER_PASSWORD = '1234';
-let DRIVERS = []; // تُحمَّل من Sheets تلقائياً
-
+// السواق يُجلبون من ورقة المستخدمين (role=driver)
 async function loadDriversList() {
-  try {
-    const r = await api({ action: 'getDrivers' });
-    if (r && r.success) {
-      DRIVERS = r.drivers.map(name => ({ username: name, password: DRIVER_PASSWORD }));
-    }
-  } catch(e) {}
+  // لم تعد مطلوبة — السواق يُجلبون مباشرة عند الحاجة
 }
 
 const ZONE_LABELS = {1:'قريبة جداً',2:'قريبة',3:'متوسطة',4:'بعيدة',5:'بعيدة جداً'};
@@ -2187,7 +2148,6 @@ async function doLogin() {
       showScreen('manager');
       requestNotifPermission();
       loadOrders().then(() => startOrdersAutoRefresh());
-      loadDriversForMgr();
     } else {
       document.getElementById('login-err').style.display = 'block';
     }
@@ -2286,8 +2246,17 @@ function setNowDatetime(id) {
 // ══════════════════════════════════════
 async function loadDriversForEmp() {
   try {
-    const r = await api({ action:'getDrivers' });
-    if (r.success) fillSelect('e-driver', r.drivers);
+    const r = await api({ action:'getUsers', password: mgrPassword });
+    // إذا فشل (موظف عادي ما عنده كلمة مدير) نستخدم action مخصص
+    let drivers = [];
+    if (r && r.success) {
+      drivers = r.users.filter(u => u.role === 'driver').map(u => u.name);
+    } else {
+      // نجيب السواق بدون كلمة مدير عبر action عام
+      const r2 = await api({ action:'getDriversFromUsers' });
+      if (r2 && r2.success) drivers = r2.drivers;
+    }
+    fillSelect('e-driver', drivers);
   } catch(e) {}
 }
 function fillSelect(id, items) {
@@ -2485,7 +2454,6 @@ function switchTab(name, btn) {
     if (!document.getElementById('cust-from').value) document.getElementById('cust-from').value = localDate(f);
     if (!document.getElementById('cust-to').value)   document.getElementById('cust-to').value   = t;
   }
-  if (name==='drivers')    loadDriversForMgr();
   if (name==='stats')      loadStats();
   if (name==='zones')      loadZonesMgmt();
   if (name==='incentives') { loadIncentivesTab(); }
@@ -2935,35 +2903,8 @@ async function deleteArea(name) {
 }
 
 // ══════════════════════════════════════
-//  DRIVERS
+//  DRIVERS — تمت الإدارة من تبويب المستخدمين
 // ══════════════════════════════════════
-async function loadDriversForMgr() {
-  document.getElementById('driver-manage-list').innerHTML='<span class="spinner"></span> جاري التحميل...';
-  try {
-    const r=await api({action:'getDrivers'});
-    if(r.success)renderDriverMgmt(r.drivers);
-  } catch(e){document.getElementById('driver-manage-list').innerHTML='<p style="color:var(--gray-400);font-size:13px">تعذر التحميل</p>';}
-}
-function renderDriverMgmt(drivers) {
-  document.getElementById('driver-manage-list').innerHTML=drivers.length
-    ?drivers.map(d=>`<div class="mgmt-item"><span class="mgmt-name">🚗 ${d}</span><button class="btn btn-danger btn-sm" onclick="deleteDriver('${d}')">حذف</button></div>`).join('')
-    :'<p style="color:var(--gray-400);font-size:13px">لا يوجد سواق</p>';
-}
-async function addDriver() {
-  const name=document.getElementById('new-driver-name').value.trim();
-  if(!name)return;
-  try {
-    const r=await api({action:'addDriver',password:mgrPassword,name});
-    if(r.success){document.getElementById('new-driver-name').value='';loadDriversForMgr();}
-  } catch(e){alert('فشل الإضافة');}
-}
-async function deleteDriver(name) {
-  if(!confirm(`حذف السائق "${name}"؟`))return;
-  try {
-    const r=await api({action:'deleteDriver',password:mgrPassword,name});
-    if(r.success)loadDriversForMgr();
-  } catch(e){alert('فشل الحذف');}
-}
 
 // ══════════════════════════════════════
 //  EMPLOYEE TABS
@@ -4440,17 +4381,7 @@ function exportExcel() {
 }
 
 
-function toggleDriverPass() {
-  const el  = document.getElementById('show-driver-pass');
-  const btn = el.closest('div').querySelector('button');
-  if (el.textContent === '••••') {
-    el.textContent = DRIVER_PASSWORD;
-    btn.textContent = '🙈 إخفاء';
-  } else {
-    el.textContent = '••••';
-    btn.textContent = '👁 إظهار';
-  }
-}
+
 
 // ══════════════════════════════════════
 //  DRIVER
