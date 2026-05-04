@@ -1376,7 +1376,7 @@ tr:hover td{background:var(--gray-50)}
                 <select id="e-driver"><option value="">-- اختر السائق --</option></select>
               </div>
               <div class="fg">
-                <label class="fl">⏰ وقت التوصيل *</label>
+                <label class="fl">⏰ وقت التوصيل المطلوب *</label>
                 <div class="dt-picker" id="dtp-outtime" onclick="openDtPicker('outtime')">
                   <span class="dt-icon">📅</span>
                   <span class="dt-val" id="dtp-outtime-display">اختر الوقت</span>
@@ -1385,7 +1385,7 @@ tr:hover td{background:var(--gray-50)}
                 <input type="hidden" id="e-outtime">
               </div>
               <div class="fg">
-                <label class="fl">🏁 وقت التسليم للسائق</label>
+                <label class="fl">🏁 وقت استلام السائق للطلب</label>
                 <div class="dt-picker" id="dtp-drivertime" onclick="openDtPicker('drivertime')">
                   <span class="dt-icon">📅</span>
                   <span class="dt-val" id="dtp-drivertime-display">اختر الوقت</span>
@@ -1670,10 +1670,10 @@ tr:hover td{background:var(--gray-50)}
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>#</th><th>الحالة</th><th>رقم الفاتورة</th><th>الزبون</th><th>الهاتف</th><th>السائق</th><th>المنطقة</th><th>الزون</th><th>مبلغ الفاتورة</th><th>التوصيل</th><th>حافز السائق</th><th>المجموع</th><th>الموظف</th><th>⏱ وقت التسجيل</th><th>🕐 استلام الطلب</th><th>🏁 وقت التسليم</th>
+              <th>#</th><th>الحالة</th><th>رقم الفاتورة</th><th>الزبون</th><th>السائق</th><th>المنطقة</th><th>الزون</th><th>حافز السائق</th><th>المجموع</th><th>الموظف</th><th>⏱ وقت التسجيل</th><th>🕐 وقت التوصيل المطلوب</th><th>🚗 وقت استلام السائق</th><th>✅ وقت استلام الزبون</th>
             </tr></thead>
             <tbody id="orders-tbody">
-              <tr><td class="empty-td" colspan="16">اضغط تحديث لجلب الطلبات</td></tr>
+              <tr><td class="empty-td" colspan="14">اضغط تحديث لجلب الطلبات</td></tr>
             </tbody>
           </table>
         </div>
@@ -2508,7 +2508,7 @@ function fmtTime(val) {
   return s;
 }
 async function loadOrders() {
-  document.getElementById('orders-tbody').innerHTML='<tr><td class="empty-td" colspan="16"><span class="spinner"></span> جاري التحميل...</td></tr>';
+  document.getElementById('orders-tbody').innerHTML='<tr><td class="empty-td" colspan="14"><span class="spinner"></span> جاري التحميل...</td></tr>';
   try {
     const r = await api({ action:'getOrders', password:mgrPassword,
       from:document.getElementById('m-from').value, to:document.getElementById('m-to').value });
@@ -2518,7 +2518,7 @@ async function loadOrders() {
       populateFilters(); renderOrders();
     }
   } catch(e) {
-    document.getElementById('orders-tbody').innerHTML='<tr><td class="empty-td" colspan="16">تعذر الاتصال</td></tr>';
+    document.getElementById('orders-tbody').innerHTML='<tr><td class="empty-td" colspan="14">تعذر الاتصال</td></tr>';
   }
 }
 function populateFilters() {
@@ -2541,7 +2541,7 @@ function renderOrders() {
     return true;
   });
   const tbody=document.getElementById('orders-tbody');
-  if(!filtered.length){tbody.innerHTML='<tr><td class="empty-td" colspan="16">لا توجد طلبات</td></tr>';return;}
+  if(!filtered.length){tbody.innerHTML='<tr><td class="empty-td" colspan="14">لا توجد طلبات</td></tr>';return;}
   tbody.innerHTML=filtered.map((o,i)=>{
     const zc=ZONE_CSS[o.zone]||'';
     const stColor = o.status==='تم التسليم' ? 'var(--success)' : o.status==='ملغي' ? 'var(--danger)' : 'var(--warn)';
@@ -2558,17 +2558,15 @@ function renderOrders() {
       </td>
       <td style="font-weight:900;font-size:14px;font-family:var(--mono);color:var(--gray-900)">${o.invoice||'—'}</td>
       <td style="font-weight:800;color:var(--gray-900);font-size:14px">${o.customer||'—'}</td>
-      <td style="color:var(--gray-900);font-size:14px;font-weight:900;font-family:var(--mono)">${o.phone||'—'}</td>
       <td style="font-weight:800;color:var(--gray-800)"><span onclick="event.stopPropagation();openDriverProfile('${(o.driver||'').replace(/'/g,"\\'")}') " style="cursor:pointer;color:var(--accent);text-decoration:underline dotted">${o.driver||'—'}</span></td>
       <td style="font-weight:800;color:var(--gray-800)">${o.area||'—'}</td>
       <td><span class="badge ${zc}" style="font-size:12px;font-weight:900;padding:4px 12px">${o.zone?'زون '+o.zone:'-'}</span></td>
-      <td style="font-weight:900;font-size:15px;color:var(--gray-900);font-family:var(--mono)">${Number(o.amount||0).toLocaleString('en-US')}</td>
-      <td style="font-weight:900;font-size:15px;color:var(--gray-900);font-family:var(--mono)">${Number(o.delivery||0).toLocaleString('en-US')}</td>
       <td style="font-weight:900;font-size:15px;color:var(--gold);font-family:var(--mono)">${Number(o.incentive||0).toLocaleString('en-US')}</td>
       <td style="font-weight:900;font-size:16px;color:var(--accent);font-family:var(--mono);background:var(--accent-lt);border-radius:4px;padding:4px 8px">${Number(o.total||0).toLocaleString('en-US')}</td>
       <td style="font-size:13px;color:var(--gray-800);font-weight:800">${o.employee||'—'}</td>
       <td style="white-space:nowrap">${fmtTime(o.registeredAt)||'—'}</td>
       <td style="white-space:nowrap">${fmtTime(o.outTime)||'—'}</td>
+      <td style="white-space:nowrap">${o.driverTime?fmtTime(o.driverTime):'<span style="color:var(--gray-300);font-weight:400">—</span>'}</td>
       <td style="white-space:nowrap">${o.deliveredAt?fmtTime(o.deliveredAt):'<span style="color:var(--gray-300);font-weight:400">—</span>'}</td>
     </tr>`;
   }).join('');
@@ -2893,7 +2891,7 @@ function renderHistoryOrders() {
         ${histRow('📞 الهاتف',    o.phone||'—')}
         ${histRow('📍 المنطقة',   o.area ? o.area + (o.zone ? ' <span style="font-size:10px;opacity:.7">(زون '+o.zone+')</span>' : '') : '—')}
         ${histRow('🚗 السائق',    o.driver||'—')}
-        ${histRow('🕐 وقت الخروج', fmtTime(o.outTime))}
+        ${histRow('🕐 وقت التوصيل المطلوب', fmtTime(o.outTime))}
         ${histRow('📝 وقت التسجيل', fmtTime(o.registeredAt))}
         ${histRow('💵 الفاتورة',  o.amount   ? Number(o.amount).toLocaleString('en-US')   + ' د.ع' : '—')}
         ${histRow('🚚 التوصيل',   o.delivery ? Number(o.delivery).toLocaleString('en-US') + ' د.ع' : '—')}
@@ -3060,8 +3058,8 @@ function histRowFull(label, val) {
         <div><label class="fl">السائق</label>
           <select id="om-driver"><option value="">-- اختر --</option></select>
         </div>
-        <div><label class="fl">وقت التوصيل</label><input id="om-outtime" type="time"></div>
-        <div><label class="fl">وقت التسليم للسائق</label><input id="om-drivertime" type="time"></div>
+        <div><label class="fl">وقت التوصيل المطلوب</label><input id="om-outtime" type="time"></div>
+        <div><label class="fl">وقت استلام السائق للطلب</label><input id="om-drivertime" type="time"></div>
         <div><label class="fl">الحالة</label>
           <select id="om-status">
             <option>خارج</option>
@@ -3133,7 +3131,7 @@ function showSubmitConfirm() {
     row('📞','الهاتف',        phone) +
     row('📍','المنطقة',       area + (areaObj.zone ? ' — زون '+areaObj.zone : '')) +
     row('🚗','السائق',        driver) +
-    row('🕐','وقت التوصيل',   document.getElementById('dtp-outtime-display').textContent) +
+    row('🕐','وقت التوصيل المطلوب',   document.getElementById('dtp-outtime-display').textContent) +
     row('🛍','تفاصيل الطلب',  items) +
     row('💵','مبلغ الفاتورة', Number(amount).toLocaleString('en-US')+' د.ع') +
     row('💳','المجموع الكلي', Number(total).toLocaleString('en-US')+' د.ع');
@@ -3628,8 +3626,10 @@ function openOrderModal(rowIndex) {
     row('🚗 السائق',        o.driver) +
     row('💰 حافز السائق',   Number(o.incentive||0).toLocaleString('en-US')+' د.ع') +
     row('⏱ وقت التسجيل',   o.registeredAt) +
-    row('🕐 وقت التوصيل',   fmtTime(o.outTime)) +
-    (o.deliveredAt ? histRowFull('🏁 وقت تسليم الطلب', '<span style="color:var(--success);font-weight:800;font-size:14px">✅ ' + o.deliveredAt + '</span>') : '') +
+    row('🕐 وقت التوصيل المطلوب',   fmtTime(o.outTime)) +
+    row('🚗 وقت استلام السائق',     fmtTime(o.driverTime)) +
+    (o.deliveredAt ? histRowFull('✅ وقت استلام الزبون للطلب', '<span style="color:var(--success);font-weight:800;font-size:14px">✅ ' + fmtTime(o.deliveredAt) + '</span>') : '') +
+    (o.deliveryLat && o.deliveryLng ? histRowFull('📍 موقع التسليم', `<a href="https://www.google.com/maps?q=${o.deliveryLat},${o.deliveryLng}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent-md);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:800;text-decoration:none">📍 عرض على الخريطة</a>`) : '') +
     row('👨‍💼 الموظف',         o.employee) +
     row('💳 المجموع الكلي', Number(o.total||0).toLocaleString('en-US')+' د.ع') +
     row('📊 الحالة',        o.status) +
@@ -4398,12 +4398,17 @@ function drvOrderCard(o, isDone) {
         <span style="font-size:14px;font-weight:900;color:var(--gray-900)">${o.items||'—'}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
-        <span style="font-size:11px;font-weight:800;color:var(--gray-500)">🕐 وقت الخروج</span>
+        <span style="font-size:11px;font-weight:800;color:var(--gray-500)">🕐 وقت التوصيل المطلوب</span>
         <span style="font-size:14px;font-weight:900;color:var(--gray-900)">${fmtTime(o.outTime)}</span>
       </div>
+      ${o.driverTime && o.driverTime !== '—' ? `
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:11px;font-weight:800;color:var(--gray-500)">🚗 وقت استلام السائق</span>
+        <span style="font-size:14px;font-weight:900;color:var(--gray-900)">${fmtTime(o.driverTime)}</span>
+      </div>` : ''}
       ${o.deliveredAt && o.deliveredAt !== '—' ? `
       <div style="display:flex;flex-direction:column;gap:2px">
-        <span style="font-size:11px;font-weight:800;color:var(--gray-500)">🏁 وقت التسليم</span>
+        <span style="font-size:11px;font-weight:800;color:var(--gray-500)">✅ وقت استلام الزبون</span>
         <span style="font-size:14px;font-weight:900;color:var(--success)">${fmtTime(o.deliveredAt)}</span>
       </div>` : ''}
       ${o.notes ? `<div style="grid-column:1/-1;display:flex;flex-direction:column;gap:2px">
@@ -4462,17 +4467,32 @@ async function drvCancel(rowIndex, orderNum) {
 
 async function drvDeliver(rowIndex, orderNum) {
   if (!confirm('تأكيد تسليم الطلب ' + orderNum + '؟')) return;
+
+  // طلب الموقع الجغرافي
+  let lat = '', lng = '';
   try {
-    await api({ action: 'driverDeliver', rowIndex });
+    if ('geolocation' in navigator) {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+        });
+      });
+      lat = pos.coords.latitude.toFixed(6);
+      lng = pos.coords.longitude.toFixed(6);
+    }
+  } catch(geoErr) {
+    console.warn('الموقع غير متاح:', geoErr.message);
+  }
+
+  try {
+    await api({ action: 'driverDeliver', rowIndex, lat, lng });
     const o = drvOrders.find(x => x.rowIndex === rowIndex);
-    if (o) o.status = 'تم التسليم';
-    // show toast
+    if (o) { o.status = 'تم التسليم'; o.deliveryLat = lat; o.deliveryLng = lng; }
     const t = document.getElementById('drv-toast');
-    t.textContent = '✅ تم تسجيل التسليم!';
+    t.textContent = lat ? '✅ تم تسجيل التسليم مع الموقع!' : '✅ تم تسجيل التسليم!';
     t.style.background = '';
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 3000);
-    // reload then switch to done tab if no more active orders
     await loadDriverOrders();
     const stillActive = drvOrders.filter(o => o.status !== 'تم التسليم' && o.status !== 'ملغي');
     if (!stillActive.length) {
