@@ -1080,7 +1080,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.3 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.4 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1260,7 +1260,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.3</span>
+      <span class="ver-badge-topbar">v1.4</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1507,7 +1507,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.3</span>
+      <span class="ver-badge-topbar">v1.4</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2696,24 +2696,33 @@ function sendNotif(title, body, tag) {
   playNotifSound();
   const _icon = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>');
   const _notifTag = tag || ('sumer-' + Date.now());
+  const _opts = { body, icon: _icon, tag: _notifTag, requireInteraction: true, vibrate: [200, 100, 200], renotify: true };
 
-  // الطريقة الأفضل: showNotification عبر SW (تشتغل لما التطبيق في الخلفية)
-  const swReg = window._swReg || null;
-  if (swReg) {
-    swReg.showNotification(title, {
-      body, icon: _icon, tag: _notifTag,
-      requireInteraction: true, vibrate: [200, 100, 200], renotify: true
+  // دالة مساعدة: أرسل الإشعار عبر SW أو مباشرة كـ fallback
+  function _doShow(reg) {
+    if (reg && reg.showNotification) {
+      reg.showNotification(title, _opts).catch(() => {
+        try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e2) {}
+      });
+    } else {
+      try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
+    }
+  }
+
+  // لو عندنا SW مخزّن — استخدمه مباشرة
+  if (window._swReg) { _doShow(window._swReg); return; }
+
+  // ننتظر أي SW جاهز عبر navigator.serviceWorker.ready
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      window._swReg = reg; // خزّن للمرة الجاية
+      _doShow(reg);
     }).catch(() => {
       try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
     });
-    // أيضاً أبلّغ SW نفسه عبر message
-    if (swReg.active) swReg.active.postMessage({ type: 'SHOW_NOTIF', title, body, tag: _notifTag });
   } else {
-    // fallback: إشعار عادي — يشتغل بس التطبيق مفتوح
-    try {
-      const n = new Notification(title, { body, icon: _icon, requireInteraction: true });
-      setTimeout(() => n.close(), 12000);
-    } catch(e) {}
+    // متصفح بدون SW دعم
+    try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
   }
 }
 
@@ -2807,10 +2816,10 @@ function startOrdersAutoRefresh() {
   });
   // interval للتبويب النشط (كل 10 ثواني)
   if (ordersInterval) clearInterval(ordersInterval);
-  ordersInterval = setInterval(silentRefreshOrders, 10000);
-  // interval للخلفية (كل 20 ثانية) — يشتغل حتى لو غيّر التبويب
+  ordersInterval = setInterval(silentRefreshOrders, 8000);
+  // interval للخلفية (كل 8 ثواني) — يشتغل حتى لو غيّر التبويب
   if (_mgrBgInterval) clearInterval(_mgrBgInterval);
-  _mgrBgInterval = setInterval(silentRefreshOrders, 20000);
+  _mgrBgInterval = setInterval(silentRefreshOrders, 8000);
 }
 
 function stopOrdersAutoRefresh() {
@@ -2867,7 +2876,7 @@ async function silentRefreshDriverOrders() {
 function startDriverPolling() {
   drvOrders.forEach(o => _drvKnownOrders.add(o.rowIndex));
   if (drvPollInterval) clearInterval(drvPollInterval);
-  drvPollInterval = setInterval(silentRefreshDriverOrders, 30000);
+  drvPollInterval = setInterval(silentRefreshDriverOrders, 8000);
 }
 
 function stopDriverPolling() {
@@ -2931,7 +2940,7 @@ function startEmpPolling() {
     _empKnownStatuses[o.rowIndex] = o.status;
   });
   if (_empPollInterval) clearInterval(_empPollInterval);
-  _empPollInterval = setInterval(silentRefreshEmpOrders, 25000);
+  _empPollInterval = setInterval(silentRefreshEmpOrders, 8000);
 }
 
 function stopEmpPolling() {
@@ -5882,23 +5891,52 @@ self.addEventListener('notificationclick', e => {
 
   navigator.serviceWorker.register(swUrl, { scope: './' })
     .then(reg => {
-      console.log('SW registered:', reg.scope);
+      console.log('SW registered via blob:', reg.scope);
       window._swReg = reg;
+      // تأكد من الـ activation
+      if (reg.installing) {
+        reg.installing.addEventListener('statechange', function() {
+          if (this.state === 'activated') window._swReg = reg;
+        });
+      }
     })
     .catch(e => {
-      // blob: URL يفشل في بعض المتصفحات — نحاول طريقة بديلة
-      console.warn('SW blob failed, trying inline:', e);
+      console.warn('SW blob failed:', e);
       _registerSWInline(swCode);
     });
 })();
 
-// طريقة بديلة: Service Worker من data URL لو blob فشل
+// طريقة بديلة: لما blob يفشل — نحاول data URL أو نجيب SW موجود
 function _registerSWInline(swCode) {
   if (!('serviceWorker' in navigator)) return;
-  // نحاول نسجّل SW من نفس الملف (لو كان على سيرفر)
-  // أو نستخدم الإشعارات العادية فقط
+
+  // محاولة 1: سجّل من data URL (يشتغل في بعض البيئات)
+  try {
+    const dataUrl = 'data:application/javascript;base64,' + btoa(unescape(encodeURIComponent(swCode)));
+    navigator.serviceWorker.register(dataUrl, { scope: './' })
+      .then(reg => {
+        window._swReg = reg;
+        console.log('SW registered via data URL');
+      })
+      .catch(() => _checkExistingSW());
+  } catch(e) {
+    _checkExistingSW();
+  }
+}
+
+// محاولة 2: لو ما نجح شيء — تحقق من SW موجود مسبقاً
+function _checkExistingSW() {
   navigator.serviceWorker.getRegistration('./').then(reg => {
-    if (reg) { window._swReg = reg; console.log('SW already registered'); }
+    if (reg) {
+      window._swReg = reg;
+      console.log('Using existing SW registration');
+    } else {
+      // آخر خيار: استخدم navigator.serviceWorker.ready
+      navigator.serviceWorker.ready.then(reg => {
+        window._swReg = reg;
+        console.log('SW ready (fallback)');
+      }).catch(() => {});
+    }
   }).catch(() => {});
 }
 
