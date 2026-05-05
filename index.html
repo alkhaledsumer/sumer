@@ -41,6 +41,8 @@
   --transition:all .22s cubic-bezier(.22,1,.36,1);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.ver-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#1a5fa0,#134878);color:#fff;font-size:9px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:20px;font-family:var(--mono);box-shadow:0 2px 8px rgba(26,95,160,.35);white-space:nowrap}
+.ver-badge-topbar{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:20px;font-family:var(--mono);white-space:nowrap}
 html{scroll-behavior:smooth}
 body{font-family:var(--font);background:var(--gray-100);color:var(--gray-800);min-height:100vh;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .screen{display:none}.screen.active{display:block}
@@ -1055,7 +1057,7 @@ tr:hover td{background:var(--gray-50)}
   </div>
 
   <!-- فوتر -->
-  <div class="intro-footer">© 2026 مخابز سومر · تصميم وتطوير: علي خالد</div>
+  <div class="intro-footer">© 2026 مخابز سومر · تصميم وتطوير: Ali Khaled</div>
 
 </div>
 
@@ -1077,7 +1079,8 @@ tr:hover td{background:var(--gray-50)}
       </div>
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
-      <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">علي خالد</span></p>
+      <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.3 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1159,6 +1162,12 @@ tr:hover td{background:var(--gray-50)}
         </div>
       </div>
 
+      <!-- تذكرني -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+        <input type="checkbox" id="remember-me" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+        <label for="remember-me" style="font-size:12.5px;font-weight:600;color:var(--gray-500);cursor:pointer;user-select:none">تذكرني في هذا الجهاز</label>
+      </div>
+
       <button class="login-btn" onclick="doLogin()" id="login-btn">
         <span id="login-btn-text">تسجيل الدخول</span>
         <span style="font-size:16px">←</span>
@@ -1193,7 +1202,55 @@ tr:hover td{background:var(--gray-50)}
 </div>
 </div>
 
-<!-- ═══════ EMPLOYEE ═══════ -->
+<!-- ═══════ ASSIGN DRIVER POPUP ═══════ -->
+<div id="assign-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="closeAssignPopup()">
+  <div onclick="event.stopPropagation()" style="background:#fff;border-radius:var(--r-xl);padding:1.75rem;width:90%;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-xl);animation:slideUpCard .25s cubic-bezier(.22,1,.36,1)">
+    <div style="font-size:16px;font-weight:900;color:var(--gray-800);margin-bottom:1.25rem;display:flex;align-items:center;gap:8px">
+      📤 تسليم الطلب للسائق
+      <span id="assign-order-num" style="font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-lt);padding:2px 8px;border-radius:20px;margin-right:auto"></span>
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:6px">🚗 السائق *</label>
+      <select id="assign-driver" onchange="onAssignDriverChange()" style="width:100%"><option value="">-- اختر السائق --</option></select>
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:6px">🏁 وقت استلام السائق *</label>
+      <input type="time" id="assign-time" style="width:100%">
+    </div>
+    <div id="external-driver-fields" style="display:none;border:1.5px solid var(--accent-md);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem;background:var(--accent-lt)">
+      <div style="font-size:12px;font-weight:900;color:var(--accent);margin-bottom:0.85rem">📋 بيانات السائق الخارجي</div>
+      <div style="margin-bottom:0.75rem">
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">👤 اسم السائق *</label>
+        <input type="text" id="ext-driver-name" placeholder="اسم السائق" style="width:100%;font-family:var(--font)">
+      </div>
+      <div style="margin-bottom:0.75rem">
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">📞 رقم هاتف السائق *</label>
+        <input type="tel" id="ext-driver-phone" placeholder="07xxxxxxxxxx" style="width:100%;font-family:var(--font)">
+      </div>
+      <div style="margin-bottom:0.75rem">
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">🪪 صورة هوية السائق</label>
+        <div style="border:1.5px dashed var(--accent-md);border-radius:var(--r);padding:0.6rem;background:#fff;text-align:center;cursor:pointer" onclick="document.getElementById('ext-driver-id-img').click()">
+          <div id="ext-driver-id-preview" style="font-size:12px;color:var(--gray-400);font-weight:600">📁 اضغط لرفع صورة الهوية</div>
+          <img id="ext-driver-id-thumb" style="display:none;max-width:100%;max-height:110px;border-radius:6px;margin-top:6px;object-fit:contain">
+        </div>
+        <input type="file" id="ext-driver-id-img" accept="image/*" style="display:none" onchange="previewExtDriverId(this)">
+      </div>
+      <div style="margin-bottom:0.75rem">
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">🚙 نوع السيارة *</label>
+        <input type="text" id="ext-driver-car" placeholder="مثال: تويوتا كورولا" style="width:100%;font-family:var(--font)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">💵 المبلغ المعطى للسائق *</label>
+        <input type="number" id="ext-driver-amount" placeholder="0" min="0" style="width:100%;font-family:var(--font)">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeAssignPopup()" class="btn" style="flex:1">إلغاء</button>
+      <button onclick="confirmAssignDriver()" class="btn btn-primary" style="flex:2">✅ تسليم وقفل الطلب</button>
+    </div>
+  </div>
+</div>
+
 <div id="screen-employee" class="screen">
   <!-- TOP BAR -->
   <div class="topbar" style="flex-shrink:0">
@@ -1203,10 +1260,12 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
+      <span class="ver-badge-topbar">v1.3</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
       <span id="emp-name-badge" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:rgba(255,255,255,.9)">👤</span>
+      <button id="emp-notif-btn" class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.55);font-size:18px;padding:4px 8px;line-height:1;background:transparent;border-color:transparent" onclick="testNotifPermission()" title="حالة الإشعارات">🔔</button>
       <button class="btn btn-sm" style="background:var(--danger);color:#fff;border-color:var(--danger);font-weight:700" onclick="goLogin()">🚪 خروج</button>
     </div>
   </div>
@@ -1215,6 +1274,7 @@ tr:hover td{background:var(--gray-50)}
   <div class="tabs-bar" style="flex-shrink:0">
     <button class="tab-btn active" id="emp-tab-btn-form"    onclick="switchEmpTab('form',this)">📝 تسجيل طلب</button>
     <button class="tab-btn"        id="emp-tab-btn-history" onclick="switchEmpTab('history',this)">📋 السجل</button>
+
   </div>
 
   <!-- ── TAB FORM WRAPPER ── -->
@@ -1373,11 +1433,10 @@ tr:hover td{background:var(--gray-50)}
           <!-- بيانات التوصيل -->
           <div class="fcard">
             <div class="fcard-title">🚗 بيانات التوصيل</div>
+            <!-- حقول مخفية — تُعبَّأ لاحقاً من السجل عند تسليم الطلب للسائق -->
+            <input type="hidden" id="e-driver">
+            <input type="hidden" id="e-drivertime">
             <div class="frow">
-              <div class="fg">
-                <label class="fl">اسم السائق *</label>
-                <select id="e-driver"><option value="">-- اختر السائق --</option></select>
-              </div>
               <div class="fg">
                 <label class="fl">⏰ وقت التوصيل المطلوب *</label>
                 <div class="dt-picker" id="dtp-outtime" onclick="openDtPicker('outtime')">
@@ -1386,15 +1445,6 @@ tr:hover td{background:var(--gray-50)}
                   <span class="dt-arrow">▾</span>
                 </div>
                 <input type="hidden" id="e-outtime">
-              </div>
-              <div class="fg">
-                <label class="fl">🏁 وقت استلام السائق للطلب</label>
-                <div class="dt-picker" id="dtp-drivertime" onclick="openDtPicker('drivertime')">
-                  <span class="dt-icon">📅</span>
-                  <span class="dt-val" id="dtp-drivertime-display">اختر الوقت</span>
-                  <span class="dt-arrow">▾</span>
-                </div>
-                <input type="hidden" id="e-drivertime">
               </div>
               <div class="fg">
                 <label class="fl">تفاصيل الطلب *</label>
@@ -1444,6 +1494,8 @@ tr:hover td{background:var(--gray-50)}
     </div>
   </div>
 
+
+
 </div><!-- end screen-employee -->
 
 <!-- ═══════ MANAGER ═══════ -->
@@ -1455,6 +1507,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
+      <span class="ver-badge-topbar">v1.3</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2037,12 +2090,50 @@ function clearCache(actionPrefix) {
 
 
 // ══════════════════════════════════════
-//  INIT
+//  REMEMBER ME
 // ══════════════════════════════════════
+function saveRememberMe(role, pass, empPass) {
+  const data = { role, pass: pass || '', empPass: empPass || '' };
+  localStorage.setItem('sumer_remember', JSON.stringify(data));
+}
+function clearRememberMe() {
+  localStorage.removeItem('sumer_remember');
+}
+function loadRememberMe() {
+  try {
+    const raw = localStorage.getItem('sumer_remember');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data || !data.role) return;
+    // فعّل checkbox
+    const cb = document.getElementById('remember-me');
+    if (cb) cb.checked = true;
+    // اختر الدور
+    selectRole(data.role);
+    // املأ الحقول
+    if (data.role === 'manager' && data.pass) {
+      const el = document.getElementById('mgr-pass');
+      if (el) el.value = data.pass;
+    } else if (data.role === 'employee' && data.empPass) {
+      const el = document.getElementById('emp-pass');
+      if (el) el.value = data.empPass;
+      // اسم موظف
+      if (data.pass) {
+        const u = document.getElementById('emp-user');
+        if (u) u.value = data.pass;
+      }
+    } else if (data.role === 'driver' && data.pass) {
+      const el = document.getElementById('drv-pass');
+      if (el) el.value = data.pass;
+    }
+  } catch(e) {}
+}
+
 window.onload = () => {
   if (API_URL) document.getElementById('api-url-input').value = API_URL;
   setDates();
   startClock();
+  loadRememberMe();
 };
 
 function localDate(d) {
@@ -2147,9 +2238,11 @@ async function doLogin() {
     switchEmpTab('form', document.getElementById('emp-tab-btn-form'));
     await loadAreasData();
     fillAreaSelect();
-    loadDriversForEmp();
     genOrderId();
+    loadDriversCache();
     setNowDatetime('e-outtime');
+    requestNotifPermission();
+    startEmpPolling();
     return;
   }
   // ── سائق ──
@@ -2191,9 +2284,10 @@ async function doLogin() {
   } catch(e) { alert('تعذر الاتصال، تحقق من الرابط'); }
 }
 function goLogin() {
-  stopAllMgrPolling(); stopDriverPolling();
+  stopAllMgrPolling(); stopDriverPolling(); stopEmpPolling();
   showScreen('login'); mgrPassword=''; selectedRole=''; currentEmployee=''; currentDriver='';
   _mgrKnownOrders.clear(); _mgrKnownDelivered.clear();
+  _empKnownStatuses = {};
   document.getElementById('emp-pass').value='';
   document.getElementById('emp-name-preview').style.display='none';
   if(document.getElementById('drv-pass')) document.getElementById('drv-pass').value='';
@@ -2282,18 +2376,28 @@ function setNowDatetime(id) {
 // ══════════════════════════════════════
 //  EMPLOYEE — SUBMIT
 // ══════════════════════════════════════
+//  DRIVERS CACHE
+// ══════════════════════════════════════
+let _driversCache = [];
+
+async function loadDriversCache() {
+  try {
+    const r = await api({ action:'getDriversFromUsers' });
+    if (r && r.success) _driversCache = r.drivers;
+  } catch(e) {}
+}
+
 async function loadDriversForEmp() {
   try {
     const r = await api({ action:'getUsers', password: mgrPassword });
-    // إذا فشل (موظف عادي ما عنده كلمة مدير) نستخدم action مخصص
     let drivers = [];
     if (r && r.success) {
       drivers = r.users.filter(u => u.role === 'driver').map(u => u.name);
     } else {
-      // نجيب السواق بدون كلمة مدير عبر action عام
       const r2 = await api({ action:'getDriversFromUsers' });
       if (r2 && r2.success) drivers = r2.drivers;
     }
+    _driversCache = drivers;
     fillSelect('e-driver', drivers);
   } catch(e) {}
 }
@@ -2306,11 +2410,10 @@ async function submitOrder() {
   const customer  = document.getElementById('e-customer').value.trim();
   const phone     = document.getElementById('e-phone').value.trim();
   const area      = document.getElementById('e-area').value;
-  const driver    = document.getElementById('e-driver').value;
   const outTime   = document.getElementById('e-outtime').value;
   const amount    = document.getElementById('e-amount').value;
   const items     = document.getElementById('e-items').value.trim();
-  if (!customer||!phone||!area||!driver||!outTime||!amount||!items) {
+  if (!customer||!phone||!area||!outTime||!amount||!items) {
     alert('يرجى تعبئة جميع الحقول المطلوبة (*)'); return;
   }
   const areaObj  = areasData.find(a=>a.name===area)||{};
@@ -2325,8 +2428,8 @@ async function submitOrder() {
       amount, delivery, total,
       area, zone: areaObj.zone||'', incentive: areaObj.incentive||0,
       address: document.getElementById('e-address').value.trim(),
-      driver, outTime,
-      driverTime: document.getElementById('e-drivertime').value,
+      driver: '', outTime,
+      driverTime: '',
       items, notes: document.getElementById('e-notes').value.trim(),
       employee: currentEmployee,
       registeredAt: (()=>{ const n=new Date(); return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'); })()
@@ -2342,7 +2445,7 @@ async function submitOrder() {
       total,
       area, zone: areaObj.zone||'', incentive: areaObj.incentive||0,
       address: document.getElementById('e-address').value.trim(),
-      driver, outTime,
+      driver: '', outTime,
       items, notes: document.getElementById('e-notes').value.trim(),
       employee: currentEmployee,
       date: today2, status: 'خارج',
@@ -2360,13 +2463,12 @@ function clearEmpForm() {
   ['e-customer','e-phone','e-invoice','e-amount','e-address','e-items','e-notes','e-delivery'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('e-area').value='';
   document.getElementById('e-driver').value='';
+  document.getElementById('e-drivertime').value='';
   document.getElementById('zone-display').style.display='none';
   document.getElementById('delivery-price').style.display='none';
   document.getElementById('e-total').textContent='0 د.ع';
   setNowDatetime('e-outtime');
-  document.getElementById('e-drivertime').value='';
   dtSetValue('outtime','');
-  dtSetValue('drivertime','');
 }
 
 // ══════════════════════════════════════
@@ -2573,7 +2675,7 @@ async function testNotifPermission() {
 }
 
 function _updateNotifBell(active) {
-  ['notif-status-btn','drv-notif-btn'].forEach(id => {
+  ['notif-status-btn','drv-notif-btn','emp-notif-btn'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = active ? '🔔' : '🔕';
@@ -2728,7 +2830,8 @@ let drvPollInterval = null;
 async function silentRefreshDriverOrders() {
   try {
     const today = localDate(new Date());
-    const r = await api({ action: 'getOrdersEmployee', from: today, to: today });
+    const daysAgo45 = localDate(new Date(Date.now() - 45 * 24 * 60 * 60 * 1000));
+    const r = await api({ action: 'getOrdersEmployee', from: daysAgo45, to: today });
     if (!r || !r.success) return;
     const fresh = r.orders.map(o => {
       o.outTime     = fmtTime(o.outTime);
@@ -2769,6 +2872,70 @@ function startDriverPolling() {
 
 function stopDriverPolling() {
   if (drvPollInterval) { clearInterval(drvPollInterval); drvPollInterval = null; }
+}
+
+// ══════════════════════════════════════
+//  EMPLOYEE POLLING — إشعارات تغيير حالة الطلب
+// ══════════════════════════════════════
+let _empKnownStatuses = {};   // { rowIndex: status }
+let _empPollInterval  = null;
+
+async function silentRefreshEmpOrders() {
+  if (!currentEmployee) return;
+  try {
+    const today = localDate(new Date());
+    const r = await api({ action: 'getOrdersEmployee', from: today, to: today });
+    if (!r || !r.success) return;
+
+    const orders = r.orders;
+
+    orders.forEach(o => {
+      const prev = _empKnownStatuses[o.rowIndex];
+      if (prev === undefined) {
+        // طلب جديد — سجّله بهدوء
+        _empKnownStatuses[o.rowIndex] = o.status;
+        return;
+      }
+      if (prev === o.status) return; // لا تغيير
+
+      // تغيّرت الحالة — أرسل إشعار
+      if (o.status === 'تم التسليم') {
+        sendNotif('✅ تم التسليم',
+          'طلب ' + (o.orderNum || '') + '\nالزبون: ' + (o.customer || '') + ' — ' + (o.area || ''),
+          'emp-done-' + o.rowIndex);
+      } else if (o.status === 'ملغي') {
+        sendNotif('❌ طلب ملغي',
+          'طلب ' + (o.orderNum || '') + '\nالزبون: ' + (o.customer || '') + ' تم إلغاؤه',
+          'emp-cancel-' + o.rowIndex);
+      } else if (o.status === 'خارج' && prev !== 'خارج') {
+        sendNotif('🚗 الطلب خرج للتوصيل',
+          'طلب ' + (o.orderNum || '') + ' — السائق: ' + (o.driver || ''),
+          'emp-out-' + o.rowIndex);
+      }
+      _empKnownStatuses[o.rowIndex] = o.status;
+    });
+
+    // حدّث sessionOrders والسجل لو مفتوح
+    if (document.getElementById('emp-tab-history')?.style.display !== 'none') {
+      const apiNums = new Set(orders.map(o => o.orderNum));
+      const extra   = sessionOrders.filter(o => !apiNums.has(o.orderNum));
+      historyOrders = [...orders, ...extra];
+      renderHistoryOrders();
+    }
+  } catch(e) {}
+}
+
+function startEmpPolling() {
+  // سجّل الحالات الحالية كـ "معروفة"
+  sessionOrders.forEach(o => {
+    _empKnownStatuses[o.rowIndex] = o.status;
+  });
+  if (_empPollInterval) clearInterval(_empPollInterval);
+  _empPollInterval = setInterval(silentRefreshEmpOrders, 25000);
+}
+
+function stopEmpPolling() {
+  if (_empPollInterval) { clearInterval(_empPollInterval); _empPollInterval = null; }
 }
 
 // ══════════════════════════════════════
@@ -3088,10 +3255,8 @@ async function deleteArea(name) {
 //  EMPLOYEE TABS
 // ══════════════════════════════════════
 function switchEmpTab(name, btn) {
-  // toggle tab buttons
   document.querySelectorAll('#screen-employee .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  // show/hide panels
   const formEl    = document.getElementById('emp-tab-form');
   const historyEl = document.getElementById('emp-tab-history');
   if (name === 'form') {
@@ -3103,6 +3268,8 @@ function switchEmpTab(name, btn) {
     loadHistoryOrders();
   }
 }
+
+
 
 // ── تاريخ لليوم أو أمس أو قبل يومين ──
 function getTargetDateStr(daysAgo) {
@@ -3174,7 +3341,9 @@ function renderHistoryOrders() {
       <tbody>
         ${filtered.map((o, i) => {
           const sc = STATUS_COLOR[o.status] || STATUS_COLOR['خارج'];
-          const isCancel = o.status !== 'ملغي' && o.status !== 'تم التسليم';
+          const isCancel  = o.status !== 'ملغي' && o.status !== 'تم التسليم';
+          const isLocked  = !!o.driver; // مقفول بعد تعيين السائق
+          const needsDriver = !o.driver && o.status !== 'ملغي' && o.status !== 'تم التسليم';
           return `
           <tr style="border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .15s"
             onmouseover="this.style.background='var(--gray-50)'"
@@ -3191,14 +3360,22 @@ function renderHistoryOrders() {
               </span>
             </td>
             <td style="padding:10px 12px">
-              ${isCancel ? `<button onclick="event.stopPropagation();empCancelOrder(${o.rowIndex},'${o.orderNum}',this)"
+              ${needsDriver ? `<button onclick="event.stopPropagation();openAssignPopup('${o.orderNum}',${o.rowIndex})"
+                style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 11px;font-family:var(--font);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">📤 تسليم للسائق</button>` : ''}
+              ${isCancel && isLocked && isExternalDriver(o.driver) ? `<button onclick="event.stopPropagation();empExternalDeliver(${o.rowIndex},'${o.orderNum}',this)"
+                style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:5px 11px;font-family:var(--font);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;margin-left:4px">✅ تم التسليم</button>` : ''}
+              ${isCancel && isLocked ? `<button onclick="event.stopPropagation();empCancelOrder(${o.rowIndex},'${o.orderNum}',this)"
+                style="background:var(--danger);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:var(--font);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;margin-right:4px">إلغاء</button>` : ''}
+              ${isCancel && !isLocked ? `<button onclick="event.stopPropagation();empCancelOrder(${o.rowIndex},'${o.orderNum}',this)"
                 style="background:var(--danger);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:var(--font);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">إلغاء</button>` : ''}
             </td>
           </tr>
           <tr id="hr-${i}" style="display:none;background:var(--gray-50)">
             <td colspan="7" style="padding:12px 16px">
+              ${isLocked ? `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-lt);color:var(--accent);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">🔒 مقفول — سُلِّم للسائق</div>` : `<div style="display:inline-flex;align-items:center;gap:5px;background:#fff7ed;color:#b45309;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">⏳ بانتظار تسليم للسائق</div>`}
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
                 ${o.driver   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚗 السائق</span><br><span style="font-size:13px;font-weight:800">${o.driver}</span></div>` : ''}
+                ${o.driverTime && o.driverTime !== '—' ? `<div><span style="font-size:10px;color:var(--accent);font-weight:700">🏁 وقت الاستلام</span><br><span style="font-size:13px;font-weight:900;color:var(--accent)">${fmtTime(o.driverTime)}</span></div>` : ''}
                 ${o.amount   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">💵 الفاتورة</span><br><span style="font-size:13px;font-weight:800">${Number(o.amount).toLocaleString('en-US')} د.ع</span></div>` : ''}
                 ${o.delivery ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚚 التوصيل</span><br><span style="font-size:13px;font-weight:800">${Number(o.delivery).toLocaleString('en-US')} د.ع</span></div>` : ''}
                 ${o.registeredAt ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">⏱ وقت التسجيل</span><br><span style="font-size:13px;font-weight:800">${fmtTime(o.registeredAt)}</span></div>` : ''}
@@ -3251,6 +3428,124 @@ async function empCancelOrder(rowIndex, orderNum, btn) {
   } catch(e) {
     btn.disabled = false; btn.textContent = '❌ إلغاء';
     alert('فشل الإلغاء — تحقق من الاتصال');
+  }
+}
+
+const EXTERNAL_DRIVER_NAMES = ['أوبر', 'كريم', 'بلي'];
+function isExternalDriver(driverName) {
+  if (!driverName) return false;
+  return EXTERNAL_DRIVER_NAMES.some(name => String(driverName).startsWith(name));
+}
+async function empExternalDeliver(rowIndex, orderNum, btn) {
+  if (!confirm('تأكيد تسليم الطلب ' + orderNum + '؟')) return;
+  btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    await api({ action: 'driverDeliver', rowIndex, status: 'تم التسليم', lat: '', lng: '' });
+    const o = historyOrders.find(x => x.rowIndex === rowIndex);
+    if (o) o.status = 'تم التسليم';
+    const s = sessionOrders.find(x => x.rowIndex === rowIndex || x.orderNum === orderNum);
+    if (s) s.status = 'تم التسليم';
+    renderHistoryOrders();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '✅ تم التسليم';
+    alert('فشل التسجيل — تحقق من الاتصال');
+  }
+}
+// ══════════════════════════════════════
+//  ASSIGN DRIVER TO ORDER
+// ══════════════════════════════════════
+let _assignRowIndex = null;
+let _assignOrderNum = '';
+
+async function openAssignPopup(orderNum, rowIndex) {
+  _assignOrderNum = orderNum; _assignRowIndex = rowIndex;
+  document.getElementById('assign-order-num').textContent = orderNum;
+  const now = new Date();
+  document.getElementById('assign-time').value =
+    String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  const sel = document.getElementById('assign-driver');
+  sel.innerHTML = '<option value="">-- اختر السائق --</option>';
+  let fixedDrivers = _driversCache.slice();
+  if (fixedDrivers.length === 0) {
+    try {
+      const r = await api({ action:'getDriversFromUsers' });
+      if (r && r.success) { _driversCache = r.drivers; fixedDrivers = r.drivers; }
+    } catch(e) {}
+  }
+  if (fixedDrivers.length > 0) {
+    const grp1 = document.createElement('optgroup');
+    grp1.label = '👤 السواق الثابتون';
+    fixedDrivers.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; grp1.appendChild(o); });
+    sel.appendChild(grp1);
+  }
+  const grp2 = document.createElement('optgroup');
+  grp2.label = '🛵 سائق خارجي';
+  EXTERNAL_DRIVER_NAMES.forEach(d => { const o = document.createElement('option'); o.value = '__ext__'+d; o.textContent = '🔗 '+d; grp2.appendChild(o); });
+  sel.appendChild(grp2);
+  resetExternalDriverFields();
+  document.getElementById('assign-overlay').style.display = 'flex';
+}
+function onAssignDriverChange() {
+  const val = document.getElementById('assign-driver').value;
+  const isExt = val.startsWith('__ext__');
+  document.getElementById('external-driver-fields').style.display = isExt ? 'block' : 'none';
+  if (isExt) {
+    ['ext-driver-name','ext-driver-phone','ext-driver-car','ext-driver-amount'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ext-driver-id-preview').textContent = '📁 اضغط لرفع صورة الهوية';
+    document.getElementById('ext-driver-id-thumb').style.display = 'none';
+    document.getElementById('ext-driver-id-img').value = '';
+  }
+}
+function previewExtDriverId(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('ext-driver-id-thumb').src = e.target.result; document.getElementById('ext-driver-id-thumb').style.display = 'block'; document.getElementById('ext-driver-id-preview').textContent = '✅ '+file.name; };
+  reader.readAsDataURL(file);
+}
+function resetExternalDriverFields() {
+  document.getElementById('external-driver-fields').style.display = 'none';
+  ['ext-driver-name','ext-driver-phone','ext-driver-car','ext-driver-amount'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ext-driver-id-preview').textContent = '📁 اضغط لرفع صورة الهوية';
+  document.getElementById('ext-driver-id-thumb').style.display = 'none';
+  document.getElementById('ext-driver-id-img').value = '';
+}
+function closeAssignPopup() {
+  document.getElementById('assign-overlay').style.display = 'none';
+  _assignRowIndex = null; _assignOrderNum = '';
+  resetExternalDriverFields();
+}
+async function confirmAssignDriver() {
+  const rawVal = document.getElementById('assign-driver').value;
+  const time   = document.getElementById('assign-time').value;
+  if (!rawVal) { alert('اختر السائق'); return; }
+  if (!time)   { alert('حدد وقت الاستلام'); return; }
+  const isExt = rawVal.startsWith('__ext__');
+  let driver = isExt ? rawVal.replace('__ext__','') : rawVal;
+  if (isExt) {
+    const name=document.getElementById('ext-driver-name').value.trim();
+    const phone=document.getElementById('ext-driver-phone').value.trim();
+    const car=document.getElementById('ext-driver-car').value.trim();
+    const amount=document.getElementById('ext-driver-amount').value.trim();
+    if (!name)   { alert('أدخل اسم السائق'); return; }
+    if (!phone)  { alert('أدخل رقم هاتف السائق'); return; }
+    if (!car)    { alert('أدخل نوع السيارة'); return; }
+    if (!amount) { alert('أدخل المبلغ المعطى للسائق'); return; }
+    driver = driver+' | '+name+' | '+phone+' | '+car+' | '+amount+' د.ع';
+  }
+  const btn = document.querySelector('#assign-overlay .btn-primary');
+  btn.disabled = true; btn.textContent = '⏳ جاري الحفظ...';
+  try {
+    await api({ action:'assignDriver', rowIndex: _assignRowIndex, driver, driverTime: time });
+    // حدّث locally
+    const o = historyOrders.find(x => x.rowIndex === _assignRowIndex || x.orderNum === _assignOrderNum);
+    if (o) { o.driver = driver; o.driverTime = time; }
+    const s = sessionOrders.find(x => x.rowIndex === _assignRowIndex || x.orderNum === _assignOrderNum);
+    if (s) { s.driver = driver; s.driverTime = time; }
+    closeAssignPopup();
+    renderHistoryOrders();
+  } catch(e) {
+    alert('فشل الحفظ — تحقق من الاتصال');
+    btn.disabled = false; btn.textContent = '✅ تسليم وقفل الطلب';
   }
 }
 
@@ -3427,11 +3722,10 @@ function showSubmitConfirm() {
   const customer = document.getElementById('e-customer').value.trim();
   const phone    = document.getElementById('e-phone').value.trim();
   const area     = document.getElementById('e-area').value;
-  const driver   = document.getElementById('e-driver').value;
   const outTime  = document.getElementById('e-outtime').value;
   const amount   = document.getElementById('e-amount').value;
   const items    = document.getElementById('e-items').value.trim();
-  if (!customer||!phone||!area||!driver||!outTime||!amount||!items) {
+  if (!customer||!phone||!area||!outTime||!amount||!items) {
     alert('يرجى تعبئة جميع الحقول الإلزامية (*)');
     return;
   }
@@ -3451,7 +3745,6 @@ function showSubmitConfirm() {
     row('👤','الزبون',        customer) +
     row('📞','الهاتف',        phone) +
     row('📍','المنطقة',       area + (areaObj.zone ? ' — زون '+areaObj.zone : '')) +
-    row('🚗','السائق',        driver) +
     row('🕐','وقت التوصيل المطلوب',   document.getElementById('dtp-outtime-display').textContent) +
     row('🛍','تفاصيل الطلب',  items) +
     row('💵','مبلغ الفاتورة', Number(amount).toLocaleString('en-US')+' د.ع') +
@@ -4643,12 +4936,13 @@ function switchDrvTab(name, btn) {
 
 async function loadDriverOrders() {
   const today = localDate(new Date());
+  const daysAgo45 = localDate(new Date(Date.now() - 45 * 24 * 60 * 60 * 1000));
   const cont  = document.getElementById('drv-orders-container');
   const done  = document.getElementById('drv-done-container');
   cont.innerHTML = '<div style="text-align:center;padding:2rem"><span class="spinner"></span> جاري التحميل...</div>';
 
   try {
-    const r = await api({ action: 'getOrdersEmployee', from: today, to: today });
+    const r = await api({ action: 'getOrdersEmployee', from: daysAgo45, to: today });
     if (!r || !r.success) throw new Error('فشل الجلب');
 
     // فلتر طلبات هذا السائق — نحافظ على الحالة المحدّثة محلياً
@@ -4825,10 +5119,14 @@ async function drvDeliver(rowIndex, orderNum) {
     if (!stillActive.length) {
       switchDrvTab('done', document.getElementById('drv-tab-btn-done'));
     }
+
   } catch(e) {
     alert('فشل التسجيل — تحقق من الاتصال وحاول مجدداً');
   }
 }
+
+
+
 
 </script>
 
@@ -4969,12 +5267,40 @@ async function drvDeliver(rowIndex, orderNum) {
 
     <div class="about-divider"></div>
 
-    <div style="font-size:11px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:1rem;letter-spacing:.3px">المطوّر</div>
-    <div class="about-dev-card">
-      <div class="about-dev-avatar">👨‍💻</div>
-      <div>
-        <div class="about-dev-name">علي خالد</div>
-        <div class="about-dev-title">مطوّر البرنامج</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;margin-bottom:1rem;letter-spacing:1.5px;text-transform:uppercase">المطوّر</div>
+
+    <!-- Developer Card — new design -->
+    <div style="background:linear-gradient(135deg,rgba(192,136,32,.12),rgba(26,95,160,.12));border:1px solid rgba(192,136,32,.25);border-radius:16px;padding:1.25rem;position:relative;overflow:hidden">
+      <!-- shimmer line -->
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(192,136,32,.6),transparent)"></div>
+
+      <!-- avatar + name row -->
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#c08820,#1a5fa0);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 4px 16px rgba(192,136,32,.3);font-family:var(--font)">AK</div>
+        <div>
+          <div style="font-size:16px;font-weight:900;color:#fff;letter-spacing:.3px">Ali Khaled</div>
+          <div style="font-size:11px;color:rgba(192,136,32,.85);font-weight:700;letter-spacing:.8px;margin-top:2px">FULL-STACK DEVELOPER</div>
+        </div>
+      </div>
+
+      <!-- contact info -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="mailto:the13warrior1991@gmail.com"
+           style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:9px 13px;text-decoration:none;transition:all .2s">
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(192,136,32,.18);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">✉</div>
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.35);font-weight:700;letter-spacing:.8px;margin-bottom:1px">EMAIL</div>
+            <div style="font-size:11.5px;color:rgba(192,136,32,.9);font-weight:700">the13warrior1991@gmail.com</div>
+          </div>
+        </a>
+        <a href="tel:07718126444"
+           style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:9px 13px;text-decoration:none">
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(26,95,160,.22);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">📞</div>
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.35);font-weight:700;letter-spacing:.8px;margin-bottom:1px">PHONE</div>
+            <div style="font-size:13px;color:rgba(168,204,232,.95);font-weight:800;letter-spacing:.5px">07718126444</div>
+          </div>
+        </a>
       </div>
     </div>
 
@@ -4999,7 +5325,7 @@ async function drvDeliver(rowIndex, orderNum) {
       </div>
     </div>
 
-    <p class="about-rights">© 2026 جميع حقوق البرنامج محفوظة لـ <span>علي خالد</span></p>
+    <p class="about-rights">© 2026 جميع حقوق البرنامج محفوظة لـ <span>Ali Khaled</span></p>
   </div>
 </div>
 
