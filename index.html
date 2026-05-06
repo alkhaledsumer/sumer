@@ -530,17 +530,29 @@ button, .tab-btn, .role-card-new {
 }
 
 /* TOPBAR */
-.topbar{background:linear-gradient(135deg, #17202e 0%, #1e2a3c 100%);color:#fff;padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;
-  height:58px;box-shadow:0 2px 12px rgba(0,0,0,.18);position:sticky;top:0;z-index:200;
-  border-bottom:1px solid rgba(255,255,255,.06)}
-.topbar-brand{display:flex;align-items:center;gap:11px}
-.topbar-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#2270c0);border-radius:9px;
+.topbar{
+  background: linear-gradient(135deg, #0d1520 0%, #162236 50%, #1a2d4a 100%);
+  color:#fff;padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;
+  height:62px;
+  box-shadow:0 2px 16px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.06);
+  position:sticky;top:0;z-index:200;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.topbar::before {
+  content:'';
+  position:absolute;inset:0;
+  background: radial-gradient(ellipse 55% 80% at 15% 50%, rgba(26,95,160,.18) 0%, transparent 65%);
+  pointer-events:none;
+}
+.topbar-brand{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.topbar-logo{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#2270c0);border-radius:10px;
   display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
-  box-shadow:0 2px 8px rgba(26,95,160,.3)}
-.topbar-title{font-size:15px;font-weight:800;color:#fff;letter-spacing:.2px}
-.topbar-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:1px;font-weight:500;letter-spacing:.4px}
+  box-shadow:0 3px 10px rgba(26,95,160,.4), 0 0 0 1px rgba(255,255,255,.1)}
+.topbar-title{font-size:15px;font-weight:900;color:#fff;letter-spacing:.2px;text-shadow:0 1px 3px rgba(0,0,0,.2)}
+.topbar-sub{font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;font-weight:600;letter-spacing:.4px}
 .topbar-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;
-  padding:3px 10px;font-size:11px;font-weight:700;color:rgba(255,255,255,.85)}
+  padding:4px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);position:relative;z-index:1;
+  backdrop-filter:blur(4px)}
 
 /* TABS */
 .tabs-bar{background:var(--white);border-bottom:1.5px solid var(--gray-200);display:flex;overflow-x:auto;padding:0 .75rem;
@@ -1110,7 +1122,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.7 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.8 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1290,7 +1302,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.7</span>
+      <span class="ver-badge-topbar">v1.8</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1537,7 +1549,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.7</span>
+      <span class="ver-badge-topbar">v1.8</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2656,6 +2668,15 @@ function switchTab(name, btn) {
 // ══════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v1.8',
+    date: '2026-05-06',
+    changes: [
+      'fix(notifications): sendNotif now uses new Notification() directly when app is visible (desktop fix) — SW only for background',
+      'feat(employee-log): add "وقت التسليم المطلوب" column + "وقت التسجيل" column to employee order history table',
+      'design(topbar): improved PWA header — deeper gradient, glow accent, elevated logo shadow, sharper typography',
+    ]
+  },
+  {
     version: 'v1.7',
     date: '2026-05-06',
     changes: [
@@ -2793,49 +2814,48 @@ function sendNotif(title, body, tag) {
   const _tag = tag || ('sumer-' + Date.now());
   const _icon = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>');
 
-  // الطريقة الأفضل: أرسل postMessage للـ SW ليعرض الإشعار
-  // هذا يشتغل حتى لو التطبيق في الخلفية أو الشاشة مقفلة
-  function _sendViaMessage(reg) {
+  // على الكومبيوتر (التطبيق مفتوح): new Notification مباشرة — الأسرع والأضمن
+  function _showDirect() {
     try {
-      const ctrl = reg.active || reg.waiting || reg.installing;
-      if (ctrl) {
-        ctrl.postMessage({ type: 'SHOW_NOTIF', title, body, tag: _tag });
-        return true;
-      }
-    } catch(e) {}
-    return false;
-  }
-
-  function _fallbackDirect() {
-    try { new Notification(title, { body, icon: _icon, requireInteraction: true, tag: _tag }); } catch(e) {}
-  }
-
-  function _tryWithReg(reg) {
-    if (!reg) { _fallbackDirect(); return; }
-    // جرب postMessage أولاً (أفضل للـ PWA)
-    if (!_sendViaMessage(reg)) {
-      // fallback: showNotification مباشرة
-      if (reg.showNotification) {
-        reg.showNotification(title, {
-          body, icon: _icon, tag: _tag,
-          requireInteraction: true, vibrate: [200,100,200], renotify: true
-        }).catch(_fallbackDirect);
-      } else {
-        _fallbackDirect();
-      }
+      new Notification(title, {
+        body: body || '',
+        icon: _icon,
+        tag: _tag,
+        requireInteraction: true,
+        renotify: true
+      });
+    } catch(e) {
+      // fallback للـ SW إذا فشل المباشر (PWA مثبت على موبايل)
+      _showViaSW();
     }
   }
 
-  if (!('serviceWorker' in navigator)) { _fallbackDirect(); return; }
+  // عبر SW — للتطبيق في الخلفية أو PWA على الموبايل
+  function _showViaSW() {
+    if (!('serviceWorker' in navigator)) return;
+    const _send = (reg) => {
+      if (!reg) return;
+      try {
+        const ctrl = reg.active || reg.waiting || reg.installing;
+        if (ctrl) {
+          ctrl.postMessage({ type: 'SHOW_NOTIF', title, body, tag: _tag });
+          return;
+        }
+      } catch(e) {}
+      // آخر محاولة: showNotification
+      try { reg.showNotification(title, { body, icon: _icon, tag: _tag, requireInteraction: true, vibrate: [200,100,200], renotify: true }); } catch(e2) {}
+    };
+    if (window._swReg) { _send(window._swReg); return; }
+    navigator.serviceWorker.ready.then(reg => { window._swReg = reg; _send(reg); }).catch(() => {});
+  }
 
-  // لو SW مخزّن وجاهز — استخدمه فوراً
-  if (window._swReg) { _tryWithReg(window._swReg); return; }
-
-  // ننتظر navigator.serviceWorker.ready
-  navigator.serviceWorker.ready.then(reg => {
-    window._swReg = reg;
-    _tryWithReg(reg);
-  }).catch(_fallbackDirect);
+  // إذا التطبيق ظاهر على الشاشة → مباشرة
+  // إذا في الخلفية → عبر SW
+  if (document.visibilityState === 'visible') {
+    _showDirect();
+  } else {
+    _showViaSW();
+  }
 }
 
 
@@ -3512,7 +3532,8 @@ function renderHistoryOrders() {
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">📅 التاريخ</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800">الزبون</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المنطقة</th>
-          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">الوقت</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">وقت التسجيل</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">🕐 التسليم المطلوب</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المجموع</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">الحالة</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800"></th>
@@ -3533,7 +3554,8 @@ function renderHistoryOrders() {
             <td style="padding:10px 12px;font-size:12px;color:var(--gray-600);white-space:nowrap;font-weight:700">${o.date||'—'}</td>
             <td style="padding:10px 12px;font-weight:700;color:var(--gray-800)">${o.customer||'—'}<br><span style="font-size:11px;color:var(--gray-400);font-weight:500">${o.phone||''}</span></td>
             <td style="padding:10px 12px;font-weight:600;color:var(--gray-600);white-space:nowrap">${o.area||'—'}</td>
-            <td style="padding:10px 12px;font-size:12px;color:var(--gray-500);white-space:nowrap">${fmtTime(o.outTime)||'—'}</td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--gray-500);white-space:nowrap">${fmtTime(o.registeredAt)||'—'}</td>
+            <td style="padding:10px 12px;font-size:12px;font-weight:800;color:var(--warn);white-space:nowrap">${o.outTime ? '🕐 ' + fmtTime(o.outTime) : '—'}</td>
             <td style="padding:10px 12px;font-weight:800;color:var(--gray-800);white-space:nowrap">${Number(o.total||0).toLocaleString('en-US')} د.ع</td>
             <td style="padding:10px 12px">
               <span style="background:${sc.bg};color:${sc.color};border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px">
@@ -3552,7 +3574,7 @@ function renderHistoryOrders() {
             </td>
           </tr>
           <tr id="hr-${i}" style="display:none;background:var(--gray-50)">
-            <td colspan="7" style="padding:12px 16px">
+            <td colspan="9" style="padding:12px 16px">
               ${isLocked ? `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-lt);color:var(--accent);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">🔒 مقفول — سُلِّم للسائق</div>` : `<div style="display:inline-flex;align-items:center;gap:5px;background:#fff7ed;color:#b45309;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">⏳ بانتظار تسليم للسائق</div>`}
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
                 ${o.driver   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚗 السائق</span><br><span style="font-size:13px;font-weight:800">${o.driver}</span></div>` : ''}
