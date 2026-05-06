@@ -1168,7 +1168,8 @@ tr:hover td{background:var(--gray-50)}
           <div class="login-input-wrap">
             <span class="login-input-icon">🔑</span>
             <input type="password" id="emp-pass" placeholder="••••••••"
-              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"
+              autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
         </div>
       </div>
@@ -1181,7 +1182,8 @@ tr:hover td{background:var(--gray-50)}
             <span class="login-input-icon">🔑</span>
             <input type="password" id="drv-pass" placeholder="••••••••"
               oninput="autoFillName('drv')"
-              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"
+              autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
         </div>
         <div id="drv-name-preview" style="display:none;background:var(--accent-lt);border:1px solid var(--accent-md);border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:800;color:var(--accent);text-align:center"></div>
@@ -1194,7 +1196,8 @@ tr:hover td{background:var(--gray-50)}
           <div class="login-input-wrap">
             <span class="login-input-icon">🔐</span>
             <input type="password" id="mgr-pass" placeholder="••••••••"
-              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"
+              autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
         </div>
       </div>
@@ -2231,8 +2234,22 @@ function saveApiUrl() {
 }
 async function api(params) {
   if (!API_URL) { alert('يرجى إدخال رابط الـ Web App أولاً'); throw new Error('No API URL'); }
-  const res = await fetch(API_URL + '?' + new URLSearchParams(params));
-  return res.json();
+  // timeout 15 ثانية — يحل مشكلة تجمّد اللوجن على PWA
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(API_URL + '?' + new URLSearchParams(params), {
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('انتهت مهلة الاتصال — تحقق من الإنترنت');
+    throw e;
+  }
 }
 
 // ══════════════════════════════════════
@@ -2265,10 +2282,18 @@ async function doLogin() {
   document.getElementById('login-err').style.display = 'none';
   if (!selectedRole) { alert('اختر موظف أو مدير'); return; }
   if (selectedRole === 'employee') {
-    const pVal = document.getElementById('emp-pass').value;
+    const pVal = document.getElementById('emp-pass').value.trim();
     document.getElementById('login-btn').disabled = true;
     document.getElementById('login-btn-text').textContent = '⏳ جاري التحقق...';
-    const user = await getUserByPassword(pVal);
+    let user = null;
+    try {
+      user = await getUserByPassword(pVal);
+    } catch(e) {
+      document.getElementById('login-btn').disabled = false;
+      document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
+      document.getElementById('login-err').textContent = '⚠️ تعذر الاتصال — تحقق من الإنترنت';
+      document.getElementById('login-err').style.display = 'block'; return;
+    }
     document.getElementById('login-btn').disabled = false;
     document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
     if (!user || user.role !== 'employee') {
@@ -2295,10 +2320,18 @@ async function doLogin() {
   }
   // ── سائق ──
   if (selectedRole === 'driver') {
-    const drvPass = document.getElementById('drv-pass').value;
+    const drvPass = document.getElementById('drv-pass').value.trim();
     document.getElementById('login-btn').disabled = true;
     document.getElementById('login-btn-text').textContent = '⏳ جاري التحقق...';
-    const user = await getUserByPassword(drvPass);
+    let user = null;
+    try {
+      user = await getUserByPassword(drvPass);
+    } catch(e) {
+      document.getElementById('login-btn').disabled = false;
+      document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
+      document.getElementById('login-err').textContent = '⚠️ تعذر الاتصال — تحقق من الإنترنت';
+      document.getElementById('login-err').style.display = 'block'; return;
+    }
     document.getElementById('login-btn').disabled = false;
     document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
     if (!user || user.role !== 'driver') {
@@ -2318,7 +2351,7 @@ async function doLogin() {
     return;
   }
 
-  const pass = document.getElementById('mgr-pass').value;
+  const pass = document.getElementById('mgr-pass').value.trim();
   if (!pass) { alert('أدخل كلمة السر'); return; }
   try {
     const r = await api({ action:'login', password:pass });
