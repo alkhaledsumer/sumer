@@ -3678,6 +3678,15 @@ function renderHistoryOrders() {
                     </div>
                   </div>
                 </div>` : ''}
+                ${o.imageUrl && o.imageUrl !== 'undefined' && o.imageUrl !== '' ? `<div style="grid-column:1/-1">
+                  <span style="font-size:10px;color:var(--gray-400);font-weight:700">📸 صورة الرحلة الخارجية</span><br>
+                  <div style="margin-top:6px">
+                    <a href="${o.imageUrl}" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-lt);color:var(--accent);border:1.5px solid var(--accent-md);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;text-decoration:none">
+                      🔗 عرض صورة الإيصال
+                    </a>
+                  </div>
+                </div>` : ''}
               </div>
             </td>
           </tr>`;
@@ -4656,7 +4665,12 @@ function openOrderModal(rowIndex) {
     row('📊 الحالة',        o.status) +
     row('🛍 تفاصيل الطلب',  o.items,   true) +
     row('🏠 العنوان',       o.address, true) +
-    row('📝 ملاحظات',       o.notes,   true);
+    row('📝 ملاحظات',       o.notes,   true) +
+    (o.imageUrl && o.imageUrl !== 'undefined' && o.imageUrl !== '' ? histRowFull('📸 صورة الرحلة الخارجية',
+      `<a href="${o.imageUrl}" target="_blank"
+        style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-lt);color:var(--accent);border:1.5px solid var(--accent-md);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;text-decoration:none;margin-top:4px">
+        🔗 عرض صورة الإيصال
+      </a>`) : '');
   setModalMode('view');
   document.getElementById('order-modal-overlay').style.display = 'flex';
   document.getElementById('order-modal').style.display         = 'flex';
@@ -5595,7 +5609,7 @@ async function drvDeliver(rowIndex, orderNum) {
     if (!proceed) return;
   }
 
-  // ─── الخطوة 4: سجّل التسليم (مع الصورة والموقع) ────────────────────────────
+  // ─── سجّل التسليم مع الموقع ──────────────────────────────────────────────────
   try {
     await api({ action: 'driverDeliver', rowIndex, lat, lng });
     const o = drvOrders.find(x => x.rowIndex === rowIndex);
