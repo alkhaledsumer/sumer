@@ -1117,7 +1117,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.7 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.9 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1300,7 +1300,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.8</span>
+      <span class="ver-badge-topbar">v1.9</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1552,7 +1552,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.8</span>
+      <span class="ver-badge-topbar">v1.9</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2701,6 +2701,16 @@ function switchTab(name, btn) {
 // ══════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v1.9',
+    date: '2026-05-06',
+    changes: [
+      'fix(notifications): SW background polling — السائق يوصله الإشعار حتى لو الشاشة مقفلة',
+      'feat(pwa): SW يسوي polling مستقل كل 15 ثانية عبر START_DRIVER_POLL message',
+      'fix(pwa): SW يبلّغ الصفحة بـ SW_NEW_ORDERS لإعادة رسم شاشة السائق',
+      'perf(sw): ترقية CACHE إلى sumer-v3 لاستبدال الـ SW القديم',
+    ]
+  },
+  {
     version: 'v1.8',
     date: '2026-05-06',
     changes: [
@@ -3087,11 +3097,50 @@ function startDriverPolling() {
   drvOrders.forEach(o => _drvKnownOrders.add(o.rowIndex));
   if (drvPollInterval) clearInterval(drvPollInterval);
   drvPollInterval = setInterval(silentRefreshDriverOrders, 8000);
+
+  // ── SW Background Polling ──
+  // أبلّغ الـ Service Worker ليسوي polling مستقل حتى لو الشاشة مقفلة
+  _startSwDriverPoll();
 }
 
 function stopDriverPolling() {
   if (drvPollInterval) { clearInterval(drvPollInterval); drvPollInterval = null; }
+  // أوقف الـ SW polling أيضاً
+  _stopSwDriverPoll();
 }
+
+function _startSwDriverPoll() {
+  if (!('serviceWorker' in navigator)) return;
+  const knownOrders = Array.from(_drvKnownOrders);
+  const send = (reg) => {
+    const ctrl = reg && (reg.active || reg.waiting);
+    if (ctrl) ctrl.postMessage({
+      type: 'START_DRIVER_POLL',
+      apiUrl: API_URL,
+      driver: currentDriver,
+      knownOrders
+    });
+  };
+  if (window._swReg) { send(window._swReg); }
+  else { navigator.serviceWorker.ready.then(r => { window._swReg = r; send(r); }).catch(() => {}); }
+}
+
+function _stopSwDriverPoll() {
+  if (!('serviceWorker' in navigator)) return;
+  const send = (reg) => {
+    const ctrl = reg && (reg.active || reg.waiting);
+    if (ctrl) ctrl.postMessage({ type: 'STOP_DRIVER_POLL' });
+  };
+  if (window._swReg) { send(window._swReg); }
+  else { navigator.serviceWorker.getRegistration('./').then(r => { if (r) send(r); }).catch(() => {}); }
+}
+
+// لما الصفحة ترجع visible (السائق فتح التطبيق) — أعد تفعيل SW poll
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentDriver) {
+    _startSwDriverPoll();
+  }
+});
 
 // ══════════════════════════════════════
 //  EMPLOYEE POLLING — إشعارات تغيير حالة الطلب
@@ -6094,14 +6143,83 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closeAbout(); }
 (function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   const swCode = `
-const CACHE = 'sumer-v2';
+const CACHE = 'sumer-v3';
+
+// ─── متغيرات polling الخلفي للسائق ───
+let _sw_apiUrl      = null;
+let _sw_driver      = null;
+let _sw_knownOrders = new Set();
+let _sw_pollTimer   = null;
+const SW_POLL_MS    = 15000; // كل 15 ثانية
+
+const _icon  = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>');
+const _badge = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1a5fa0"/><text x="32" y="44" font-size="36" text-anchor="middle">📦</text></svg>');
+
+function _swNotif(title, body, tag) {
+  return self.registration.showNotification(title, {
+    body, tag: tag || ('sumer-' + Date.now()),
+    icon: _icon, badge: _badge,
+    requireInteraction: true, vibrate: [200, 100, 200], renotify: true
+  });
+}
+
+// ─── الـ polling المستقل داخل SW ───
+async function _swPollDriver() {
+  if (!_sw_apiUrl || !_sw_driver) return;
+  try {
+    const today = new Date();
+    const pad   = n => String(n).padStart(2, '0');
+    const fmt   = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+    const to    = fmt(today);
+    const from  = fmt(new Date(Date.now() - 45 * 24 * 60 * 60 * 1000));
+
+    const url = _sw_apiUrl + '?action=getOrdersEmployee&from=' + from + '&to=' + to;
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data || !data.success || !data.orders) return;
+
+    const mine = data.orders.filter(o => o.driver === _sw_driver);
+
+    // لو أول مرة — سجّل بدون إشعار
+    if (_sw_knownOrders.size === 0 && mine.length > 0) {
+      mine.forEach(o => _sw_knownOrders.add(String(o.rowIndex)));
+      return;
+    }
+
+    // اكتشف طلبات جديدة
+    const newOrders = mine.filter(o => !_sw_knownOrders.has(String(o.rowIndex)));
+    for (const o of newOrders) {
+      _sw_knownOrders.add(String(o.rowIndex));
+      await _swNotif(
+        '📦 طلب جديد!',
+        'طلب ' + (o.orderNum||'') + '\\nالزبون: ' + (o.customer||'') + '\\nالمنطقة: ' + (o.area||'') + '\\n' + Number(o.total||0).toLocaleString('en-US') + ' د.ع',
+        'drv-new-' + o.rowIndex
+      );
+    }
+
+    // أبلّغ الصفحة لو مفتوحة بالتحديث
+    if (newOrders.length > 0) {
+      const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      allClients.forEach(c => c.postMessage({ type: 'SW_NEW_ORDERS', count: newOrders.length }));
+    }
+  } catch(e) {}
+}
+
+function _startSwPoll() {
+  if (_sw_pollTimer) clearInterval(_sw_pollTimer);
+  _sw_pollTimer = setInterval(_swPollDriver, SW_POLL_MS);
+}
+
 self.addEventListener('install', e => { self.skipWaiting(); });
+
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
   ));
   self.clients.claim();
 });
+
 self.addEventListener('fetch', e => {
   if (e.request.url.includes('googleapis.com') || e.request.method !== 'GET') return;
   e.respondWith(
@@ -6118,21 +6236,31 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// استقبال رسائل من الصفحة لإرسال إشعار عبر SW
+// استقبال رسائل من الصفحة
 self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'SHOW_NOTIF') {
+  if (!e.data) return;
+
+  // إشعار فوري من الصفحة
+  if (e.data.type === 'SHOW_NOTIF') {
     const { title, body, tag } = e.data;
-    e.waitUntil(
-      self.registration.showNotification(title, {
-        body,
-        tag: tag || 'sumer-notif',
-        icon: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>'),
-        badge: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1a5fa0"/><text x="32" y="44" font-size="36" text-anchor="middle">📦</text></svg>'),
-        requireInteraction: true,
-        vibrate: [200, 100, 200],
-        renotify: true
-      })
-    );
+    e.waitUntil(_swNotif(title, body, tag));
+  }
+
+  // الصفحة ترسل بيانات السائق لتفعيل الـ polling المستقل
+  if (e.data.type === 'START_DRIVER_POLL') {
+    _sw_apiUrl = e.data.apiUrl;
+    _sw_driver = e.data.driver;
+    // أضف الطلبات الحالية المعروفة حتى لا نرسل إشعار عنها
+    if (e.data.knownOrders && Array.isArray(e.data.knownOrders)) {
+      e.data.knownOrders.forEach(id => _sw_knownOrders.add(String(id)));
+    }
+    _startSwPoll();
+  }
+
+  // إيقاف الـ polling (عند تسجيل الخروج)
+  if (e.data.type === 'STOP_DRIVER_POLL') {
+    if (_sw_pollTimer) { clearInterval(_sw_pollTimer); _sw_pollTimer = null; }
+    _sw_apiUrl = null; _sw_driver = null; _sw_knownOrders.clear();
   }
 });
 
@@ -6159,7 +6287,11 @@ self.addEventListener('notificationclick', e => {
       // تأكد من الـ activation
       if (reg.installing) {
         reg.installing.addEventListener('statechange', function() {
-          if (this.state === 'activated') window._swReg = reg;
+          if (this.state === 'activated') {
+            window._swReg = reg;
+            // لو السائق مسجّل دخول — ابدأ SW polling فوراً بعد activation
+            if (currentDriver) _startSwDriverPoll();
+          }
         });
       }
     })
@@ -6167,6 +6299,15 @@ self.addEventListener('notificationclick', e => {
       console.warn('SW blob failed:', e);
       _registerSWInline(swCode);
     });
+
+  // استقبال رسائل من SW (مثل اكتشاف طلب جديد)
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (!e.data) return;
+    if (e.data.type === 'SW_NEW_ORDERS' && currentDriver) {
+      // حدّث شاشة السائق بهدوء
+      silentRefreshDriverOrders().catch(() => {});
+    }
+  });
 })();
 
 // طريقة بديلة: لما blob يفشل — نحاول data URL أو نجيب SW موجود
