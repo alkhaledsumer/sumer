@@ -1110,7 +1110,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.6 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.7 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1290,7 +1290,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.6</span>
+      <span class="ver-badge-topbar">v1.7</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1537,7 +1537,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.6</span>
+      <span class="ver-badge-topbar">v1.7</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2656,6 +2656,14 @@ function switchTab(name, btn) {
 // ══════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v1.7',
+    date: '2026-05-06',
+    changes: [
+      'fix(pwa): SW health-check — re-acquire service worker on visibilitychange + every 30s to fix intermittent notifications',
+      'feat(alerts): deadline alert 30 min before requested delivery time for manager, employee and driver',
+    ]
+  },
+  {
     version: 'v1.6',
     date: '2026-05-06',
     changes: [
@@ -2830,6 +2838,47 @@ function sendNotif(title, body, tag) {
   }).catch(_fallbackDirect);
 }
 
+
+// ══════════════════════════════════════
+//  DEADLINE ALERT — تنبيه اقتراب وقت التسليم
+// ══════════════════════════════════════
+// نحفظ الطلبات التي أرسلنا لها تنبيه الوقت حتى لا نكرر
+const _deadlineAlerted = new Set();
+
+function checkDeadlineAlert(orders) {
+  if (!orders || !orders.length) return;
+  if (Notification.permission !== 'granted') return;
+
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+
+  orders.forEach(o => {
+    // تجاهل المكتملة والملغاة
+    if (o.status === 'تم التسليم' || o.status === 'ملغي') return;
+    if (!o.outTime) return;
+
+    // استخرج HH:mm من outTime
+    const raw = String(o.outTime).replace(/<[^>]*>/g,'').trim();
+    const m = raw.match(/(\d{1,2}):(\d{2})/);
+    if (!m) return;
+
+    const orderMins = parseInt(m[1]) * 60 + parseInt(m[2]);
+    const diff = orderMins - nowMins; // الفرق بالدقائق
+
+    // تنبيه إذا تبقى بين 0 و 30 دقيقة
+    const alertKey = o.rowIndex + '-deadline';
+    if (diff >= 0 && diff <= 30 && !_deadlineAlerted.has(alertKey)) {
+      _deadlineAlerted.add(alertKey);
+      const remaining = diff === 0 ? 'الآن' : 'خلال ' + diff + ' دقيقة';
+      sendNotif(
+        '⏰ اقتراب وقت التسليم!',
+        'طلب ' + (o.orderNum||'') + ' — ' + (o.customer||'') + '\nالمطلوب: ' + m[0] + ' (' + remaining + ')',
+        'deadline-' + o.rowIndex
+      );
+    }
+  });
+}
+
 function playNotifSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2894,6 +2943,9 @@ async function silentRefreshOrders() {
       _mgrKnownOrders.add(o.rowIndex);
       if (o.status === 'تم التسليم') _mgrKnownDelivered.add(o.rowIndex);
     });
+
+    // تنبيه اقتراب وقت التسليم — للمدير
+    checkDeadlineAlert(r.orders);
 
     // حدّث الجدول بس لو تبويب الطلبات نشط
     const ordersTabActive = document.getElementById('tab-orders')?.classList.contains('active');
@@ -2972,6 +3024,9 @@ async function silentRefreshDriverOrders() {
     }
     fresh.forEach(o => _drvKnownOrders.add(o.rowIndex));
     drvOrders = fresh;
+
+    // تنبيه اقتراب وقت التسليم — للسائق
+    checkDeadlineAlert(fresh);
     const active    = drvOrders.filter(o => o.status !== 'تم التسليم' && o.status !== 'ملغي');
     const delivered = drvOrders.filter(o => o.status === 'تم التسليم'  || o.status === 'ملغي');
     const cont = document.getElementById('drv-orders-container');
@@ -3035,6 +3090,9 @@ async function silentRefreshEmpOrders() {
       }
       _empKnownStatuses[o.rowIndex] = o.status;
     });
+
+    // تنبيه اقتراب وقت التسليم — للموظف
+    checkDeadlineAlert(orders);
 
     // حدّث sessionOrders والسجل لو مفتوح
     if (document.getElementById('emp-tab-history')?.style.display !== 'none') {
@@ -6093,6 +6151,48 @@ function _checkExistingSW() {
     }
   }).catch(() => {});
 }
+
+// 4) SW Health Check — re-acquire SW registration when app becomes visible
+// هذا يحل مشكلة: الإشعار يوصل أحياناً فقط عند فتح التطبيق
+(function setupSWHealthCheck() {
+  if (!('serviceWorker' in navigator)) return;
+
+  function refreshSWReg() {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      if (regs.length > 0) {
+        // خذ أول SW نشط
+        const active = regs.find(r => r.active);
+        if (active) {
+          window._swReg = active;
+          return;
+        }
+        window._swReg = regs[0];
+      } else {
+        // لا يوجد SW — حاول navigator.serviceWorker.ready
+        navigator.serviceWorker.ready.then(reg => {
+          window._swReg = reg;
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+
+  // كل مرة يرجع المستخدم للتطبيق — تحقق من SW
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshSWReg();
+    }
+  });
+
+  // كل 30 ثانية تحقق من صحة الـ SW
+  setInterval(() => {
+    if (!window._swReg || !window._swReg.active) {
+      refreshSWReg();
+    }
+  }, 30000);
+
+  // تأكد من SW عند أول تحميل بعد ثانيتين
+  setTimeout(refreshSWReg, 2000);
+})();
 
 // 3) بانر التثبيت
 let _deferredPrompt = null;
