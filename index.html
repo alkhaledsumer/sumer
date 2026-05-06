@@ -357,12 +357,6 @@ input:focus, select:focus, textarea:focus {
 input::placeholder, textarea::placeholder { color: var(--gray-300); }
 select option { background: #fff; color: var(--gray-800); }
 textarea { resize: vertical; min-height: 68px; }
-.login-input-wrap input {
-  color: var(--gray-800) !important;
-  background: var(--white) !important;
-  border: 1.5px solid var(--gray-200) !important;
-  padding-right: 38px !important;
-}
 .login-input-wrap input:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 3px rgba(26,95,160,.1) !important;
@@ -1367,8 +1361,8 @@ tr:hover td{background:var(--gray-50)}
     }
     .ticker-inner:hover { animation-play-state: paused; }
     @keyframes ticker-scroll {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
     }
     .ticker-item {
       display: inline-flex;
@@ -1527,6 +1521,11 @@ tr:hover td{background:var(--gray-50)}
           <option value="0">اليوم</option>
           <option value="1">أمس</option>
           <option value="2">قبل يومين</option>
+          <option value="3">قبل 3 أيام</option>
+          <option value="4">قبل 4 أيام</option>
+          <option value="5">قبل 5 أيام</option>
+          <option value="6">قبل 6 أيام</option>
+          <option value="7">قبل أسبوع</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="loadHistoryOrders()">↻ تحديث</button>
         <span id="hist-count-badge" style="margin-right:auto;font-size:12px;font-weight:700;color:var(--gray-400)"></span>
@@ -2872,7 +2871,9 @@ function checkDeadlineAlert(orders) {
     if (!m) return;
 
     const orderMins = parseInt(m[1]) * 60 + parseInt(m[2]);
-    const diff = orderMins - nowMins; // الفرق بالدقائق
+    let diff = orderMins - nowMins;
+    // تصحيح منتصف الليل: لو الفرق سالب جداً يعني الطلب اليوم التالي
+    if (diff < -60) diff += 1440;
 
     // تنبيه إذا تبقى بين 0 و 30 دقيقة
     const alertKey = o.rowIndex + '-deadline';
@@ -3103,12 +3104,17 @@ async function silentRefreshEmpOrders() {
     // تنبيه اقتراب وقت التسليم — للموظف
     checkDeadlineAlert(orders);
 
-    // حدّث sessionOrders والسجل لو مفتوح
+    // حدّث sessionOrders والسجل لو مفتوح — بس إذا المستخدم شايف اليوم فقط
     if (document.getElementById('emp-tab-history')?.style.display !== 'none') {
-      const apiNums = new Set(orders.map(o => o.orderNum));
-      const extra   = sessionOrders.filter(o => !apiNums.has(o.orderNum));
-      historyOrders = [...orders, ...extra];
-      renderHistoryOrders();
+      const selectedDays = parseInt(document.getElementById('hist-date-filter')?.value) || 0;
+      if (selectedDays === 0) {
+        // المستخدم شايف اليوم — حدّث البيانات بأمان
+        const apiNums = new Set(orders.map(o => o.orderNum));
+        const extra   = sessionOrders.filter(o => !apiNums.has(o.orderNum));
+        historyOrders = [...orders, ...extra];
+        renderHistoryOrders();
+      }
+      // لو مختار يوم ثاني — لا نلمس historyOrders حتى لا تختفي البيانات
     }
   } catch(e) {}
 }
@@ -3471,9 +3477,12 @@ let historyOrders = [];
 async function loadHistoryOrders() {
   const cont = document.getElementById('hist-cards-container');
   cont.innerHTML = '<div style="text-align:center;padding:2rem"><span class="spinner"></span> جاري التحميل...</div>';
+  // نقرأ الاختيار الحالي ونجيب نطاق يشمله دايماً
+  const selectedDays = parseInt(document.getElementById('hist-date-filter').value) || 0;
+  const maxDays = Math.max(selectedDays, 2);
+  const from = getTargetDateStr(maxDays);
+  const to   = getTargetDateStr(0);
   try {
-    const from = getTargetDateStr(2);
-    const to   = getTargetDateStr(0);
     // نستخدم action مخصص للموظف بدون كلمة سر المدير
     const r = await api({ action:'getOrdersEmployee', from, to });
     if (r && r.success) {
@@ -3561,7 +3570,7 @@ function renderHistoryOrders() {
             </td>
           </tr>
           <tr id="hr-${i}" style="display:none;background:var(--gray-50)">
-            <td colspan="7" style="padding:12px 16px">
+            <td colspan="8" style="padding:12px 16px">
               ${isLocked ? `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-lt);color:var(--accent);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">🔒 مقفول — سُلِّم للسائق</div>` : `<div style="display:inline-flex;align-items:center;gap:5px;background:#fff7ed;color:#b45309;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">⏳ بانتظار تسليم للسائق</div>`}
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
                 ${o.driver   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚗 السائق</span><br><span style="font-size:13px;font-weight:800">${o.driver}</span></div>` : ''}
@@ -4343,7 +4352,7 @@ async function loadDashboard() {
     const drivers = Object.entries(dMap).sort((a,b)=>b[1].count-a[1].count);
     document.getElementById('d-drivers-list').innerHTML = drivers.length
       ? drivers.map(([name,d]) => `
-        <div class="dash-driver-row" onclick="openDriverProfile('${name.replace(/'/g,"\\'")}') " style="cursor:pointer"
+        <div class="dash-driver-row" onclick="openDriverProfile(this.dataset.driver)" data-driver="${name.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" style="cursor:pointer"
           onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
           <div>
             <div class="dash-driver-name">🚗 ${name} <span style="font-size:10px;color:var(--accent);font-weight:600">← تفاصيل</span></div>
@@ -4426,7 +4435,6 @@ function openOrderModal(rowIndex) {
       <span style="font-size:13px;font-weight:600;color:var(--gray-700)">${val||'—'}</span>
     </div>`;
   document.getElementById('om-details-grid').innerHTML =
-    row('📅 التاريخ',        o.date) +
     row('📅 التاريخ',        o.date) +
     row('👤 الزبون',        o.customer) +
     row('📞 الهاتف',        o.phone) +
@@ -5847,7 +5855,8 @@ function detectLateOrders(orders) {
 // ══════════════════════════════════════
 //  FEATURE 8: DRIVER PROFILE MODAL
 // ══════════════════════════════════════
-async function openDriverProfile(driverName) {
+async function openDriverProfile(driverNameOrEl) {
+  const driverName = (typeof driverNameOrEl === 'string') ? driverNameOrEl : driverNameOrEl.dataset.driver;
   document.getElementById('dp-name').textContent = '🚗 ' + driverName;
   document.getElementById('dp-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
