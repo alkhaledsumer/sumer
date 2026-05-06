@@ -499,6 +499,36 @@ textarea { resize: vertical; min-height: 68px; }
 .rep-kpi-label{font-size:10px;font-weight:700;color:var(--gray-400);letter-spacing:.3px}
 .rep-kpi-val{font-size:20px;font-weight:900;color:var(--accent);margin-top:3px}
 
+/* ── PWA NATIVE FEEL ── */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .topbar {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(58px + env(safe-area-inset-top, 0px));
+  }
+  .emp-footer, .login-page {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* إخفاء scrollbar في وضع التطبيق */
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+}
+
+/* تحسين اللمس على الموبايل */
+button, .tab-btn, .role-card-new {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* منع تحديد النص عند اللمس */
+.topbar, .tabs-bar, .tab-btn, .emp-footer {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* TOPBAR */
 .topbar{background:linear-gradient(135deg, #17202e 0%, #1e2a3c 100%);color:#fff;padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;
   height:58px;box-shadow:0 2px 12px rgba(0,0,0,.18);position:sticky;top:0;z-index:200;
@@ -1080,7 +1110,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.4 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.5 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1260,7 +1290,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.4</span>
+      <span class="ver-badge-topbar">v1.5</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1507,7 +1537,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.4</span>
+      <span class="ver-badge-topbar">v1.5</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2608,6 +2638,41 @@ function switchTab(name, btn) {
 }
 
 // ══════════════════════════════════════
+//  CHANGELOG
+// ══════════════════════════════════════
+const CHANGELOG = [
+  {
+    version: 'v1.5',
+    date: '2025-07-10',
+    changes: [
+      'feat(driver): show order date in card header',
+      'feat(employee): add date column to orders history table',
+      'feat(pwa): native app-like UI — safe-area insets, bottom padding, splash feel',
+      'feat(app): add CHANGELOG panel accessible from About dialog',
+    ]
+  },
+  {
+    version: 'v1.4',
+    date: '2025-07-09',
+    changes: [
+      'fix(notifications): rewrite sendNotif — use navigator.serviceWorker.ready as reliable fallback',
+      'fix(pwa): SW registration fallback chain: blob → data URL → existing registration',
+      'perf(polling): reduce all polling intervals to 8s (was 10–30s)',
+    ]
+  },
+  {
+    version: 'v1.3',
+    date: '2025-07-01',
+    changes: [
+      'Initial stable release',
+      'Driver, employee and manager screens',
+      'PWA manifest + service worker',
+      'Push notifications via SW showNotification',
+    ]
+  }
+];
+
+// ══════════════════════════════════════
 //  NOTIFICATIONS SYSTEM
 // ══════════════════════════════════════
 
@@ -3339,6 +3404,7 @@ function renderHistoryOrders() {
       <thead>
         <tr style="background:var(--gray-800);color:#fff">
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">#</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">📅 التاريخ</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800">الزبون</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المنطقة</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">الوقت</th>
@@ -3359,6 +3425,7 @@ function renderHistoryOrders() {
             onmouseout="this.style.background=''"
             onclick="toggleHistRow('hr-${i}',this)">
             <td style="padding:10px 12px;font-family:monospace;font-weight:800;font-size:12px;color:var(--accent);white-space:nowrap">${o.orderNum||'—'}</td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--gray-600);white-space:nowrap;font-weight:700">${o.date||'—'}</td>
             <td style="padding:10px 12px;font-weight:700;color:var(--gray-800)">${o.customer||'—'}<br><span style="font-size:11px;color:var(--gray-400);font-weight:500">${o.phone||''}</span></td>
             <td style="padding:10px 12px;font-weight:600;color:var(--gray-600);white-space:nowrap">${o.area||'—'}</td>
             <td style="padding:10px 12px;font-size:12px;color:var(--gray-500);white-space:nowrap">${fmtTime(o.outTime)||'—'}</td>
@@ -5039,7 +5106,10 @@ function drvOrderCard(o, isDone) {
     <!-- header الطلب -->
     <div style="background:${isDone ? 'var(--success)' : 'var(--gray-800)'};padding:.65rem 1rem;
                 display:flex;justify-content:space-between;align-items:center">
-      <span style="font-family:monospace;font-size:13px;font-weight:800;color:#fff">${o.orderNum||'—'}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:monospace;font-size:13px;font-weight:800;color:#fff">${o.orderNum||'—'}</span>
+        ${o.date ? `<span style="background:rgba(255,255,255,.13);color:rgba(255,255,255,.8);border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.3px">📅 ${o.date}</span>` : ''}
+      </div>
       <span style="background:rgba(255,255,255,.18);color:#fff;border-radius:20px;padding:3px 10px;
                    font-size:11px;font-weight:700">${isDone ? '✅ تم التسليم' : '🚗 خارج للتوصيل'}</span>
     </div>
@@ -5442,6 +5512,19 @@ async function drvDeliver(rowIndex, orderNum) {
     </div>
 
     <p class="about-rights">© 2026 جميع حقوق البرنامج محفوظة لـ <span>Ali Khaled</span></p>
+
+    <div class="about-divider"></div>
+
+    <!-- CHANGELOG PANEL -->
+    <div>
+      <button onclick="toggleChangelog()" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);border-radius:10px;padding:9px 14px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .2s">
+        <span>📋 CHANGELOG</span>
+        <span id="changelog-arrow" style="font-size:10px;transition:transform .2s">▼</span>
+      </button>
+      <div id="changelog-panel" style="display:none;margin-top:8px;max-height:260px;overflow-y:auto;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.2)">
+        <div id="changelog-content" style="padding:12px 14px;font-size:11px;color:rgba(255,255,255,.6);font-family:monospace;line-height:1.7"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5787,6 +5870,30 @@ function openAbout() {
 function closeAbout() {
   document.getElementById('about-overlay').classList.remove('open');
   document.body.style.overflow = '';
+  // أعد إغلاق الـ changelog عند إغلاق الـ about
+  const panel = document.getElementById('changelog-panel');
+  if (panel) panel.style.display = 'none';
+  const arrow = document.getElementById('changelog-arrow');
+  if (arrow) arrow.style.transform = '';
+}
+function toggleChangelog() {
+  const panel  = document.getElementById('changelog-panel');
+  const arrow  = document.getElementById('changelog-arrow');
+  const content = document.getElementById('changelog-content');
+  const isOpen = panel.style.display !== 'none';
+  if (!isOpen) {
+    // ابنِ المحتوى من CHANGELOG array
+    content.innerHTML = CHANGELOG.map(entry => `
+      <div style="margin-bottom:14px">
+        <div style="color:#c08820;font-weight:800;font-size:12px;margin-bottom:4px">${entry.version} <span style="color:rgba(255,255,255,.3);font-size:10px;font-weight:400">— ${entry.date}</span></div>
+        ${entry.changes.map(c => `<div style="padding-right:10px;color:rgba(255,255,255,.55)">• ${c}</div>`).join('')}
+      </div>`).join('');
+    panel.style.display = 'block';
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    panel.style.display = 'none';
+    arrow.style.transform = '';
+  }
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeAbout(); });
 </script>
