@@ -3718,10 +3718,120 @@ function isExternalDriver(driverName) {
   return EXTERNAL_DRIVER_NAMES.some(name => String(driverName).startsWith(name));
 }
 async function empExternalDeliver(rowIndex, orderNum, btn) {
+
+  // ── الخطوة 1: popup رفع السكرين شوت ─────────────────────────────────────────
+  const selectedFile = await new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:999999;
+      background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+      display:flex;align-items:center;justify-content:center;padding:1.25rem;
+      animation:fadeIn .2s ease
+    `;
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;
+        overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:slideUpCard .25s cubic-bezier(.22,1,.36,1)">
+        <div style="background:linear-gradient(135deg,#1a5fa0,#134878);padding:1.25rem 1.25rem .9rem;text-align:center">
+          <div style="font-size:38px;margin-bottom:6px">📸</div>
+          <div style="font-size:15px;font-weight:900;color:#fff">سكرين شوت الرحلة الخارجية</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px">
+            مطلوب لإتمام تسليم الطلب ${orderNum}
+          </div>
+        </div>
+        <div style="padding:1.2rem 1.25rem">
+          <div style="background:#e4f0fb;border:1.5px solid #a8cce8;border-radius:12px;
+            padding:.85rem 1rem;margin-bottom:1rem;font-size:12.5px;color:#134878;
+            line-height:1.65;font-weight:600">
+            📌 ارفع صورة من تطبيق بلي أو كريم تُثبت دفع الرحلة
+          </div>
+          <div id="emp-ss-preview-wrap" style="display:none;margin-bottom:.9rem;text-align:center">
+            <img id="emp-ss-preview-img"
+              style="max-width:100%;max-height:160px;border-radius:10px;
+                     border:2px solid #1a5fa0;object-fit:contain" />
+            <div style="font-size:11px;color:#1a5fa0;font-weight:700;margin-top:5px">✅ تم اختيار الصورة</div>
+          </div>
+          <label for="emp-ss-file-input"
+            style="display:block;background:#e4f0fb;border:2px dashed #1a5fa0;
+              border-radius:12px;padding:.9rem;text-align:center;cursor:pointer;
+              font-size:13px;font-weight:800;color:#1a5fa0;margin-bottom:1rem">
+            📁 اضغط لاختيار الصورة
+          </label>
+          <input type="file" id="emp-ss-file-input" accept="image/*" style="display:none">
+          <div style="display:flex;gap:8px">
+            <button id="emp-ss-cancel"
+              style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #e5e7eb;
+                background:#f9fafb;color:#374151;font-family:var(--font);font-size:13px;
+                font-weight:800;cursor:pointer">← رجوع</button>
+            <button id="emp-ss-confirm" disabled
+              style="flex:1;padding:11px;border-radius:10px;border:none;
+                background:#ccc;color:#fff;font-family:var(--font);
+                font-size:13px;font-weight:900;cursor:not-allowed;transition:all .2s">
+              تأكيد التسليم ✅
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    let _file = null;
+    const fileInput  = overlay.querySelector('#emp-ss-file-input');
+    const confirmBtn = overlay.querySelector('#emp-ss-confirm');
+    const cancelBtn  = overlay.querySelector('#emp-ss-cancel');
+    const prevWrap   = overlay.querySelector('#emp-ss-preview-wrap');
+    const prevImg    = overlay.querySelector('#emp-ss-preview-img');
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0]; if (!file) return;
+      _file = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        prevImg.src = e.target.result;
+        prevWrap.style.display = 'block';
+        confirmBtn.disabled = false;
+        confirmBtn.style.background = 'linear-gradient(135deg,#1a5fa0,#134878)';
+        confirmBtn.style.cursor = 'pointer';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    confirmBtn.onclick = () => { if (!_file) return; document.body.removeChild(overlay); resolve(_file); };
+    cancelBtn.onclick  = () => { document.body.removeChild(overlay); resolve(null); };
+  });
+
+  // لو ضغط رجوع بدون صورة — وقف
+  if (!selectedFile) return;
+
   if (!confirm('تأكيد تسليم الطلب ' + orderNum + '؟')) return;
-  btn.disabled = true; btn.textContent = '⏳...';
+  btn.disabled = true; btn.textContent = '⏳ جاري الرفع...';
+
+  // ── الخطوة 2: رفع الصورة لـ ImgBB ───────────────────────────────────────────
+  let imageUrl = '';
   try {
-    await api({ action: 'driverDeliver', rowIndex, status: 'تم التسليم', lat: '', lng: '' });
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+    formData.append('name', 'order_' + orderNum + '_' + Date.now());
+
+    const imgbbRes = await fetch('https://api.imgbb.com/1/upload?key=291605ac565f4240fa647416c54b7ae7', {
+      method: 'POST',
+      body: formData
+    });
+    const imgbbData = await imgbbRes.json();
+    if (imgbbData.success) {
+      imageUrl = imgbbData.data.url;
+    } else {
+      throw new Error('ImgBB upload failed');
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '✅ تم التسليم';
+    alert('فشل رفع الصورة — تحقق من الاتصال وحاول مجدداً');
+    return;
+  }
+
+  // ── الخطوة 3: تسجيل التسليم مع رابط الصورة ──────────────────────────────────
+  btn.textContent = '⏳ جاري التسجيل...';
+  try {
+    await api({ action: 'driverDeliver', rowIndex, status: 'تم التسليم', lat: '', lng: '', imageUrl });
     const o = historyOrders.find(x => x.rowIndex === rowIndex);
     if (o) o.status = 'تم التسليم';
     const s = sessionOrders.find(x => x.rowIndex === rowIndex || x.orderNum === orderNum);
@@ -5417,7 +5527,6 @@ async function drvCancel(rowIndex, orderNum) {
 async function drvDeliver(rowIndex, orderNum) {
   if (!confirm('تأكيد تسليم الطلب ' + orderNum + '؟')) return;
 
-  // طلب الموقع الجغرافي
   let lat = '', lng = '', geoGranted = false;
   try {
     if ('geolocation' in navigator) {
@@ -5438,7 +5547,6 @@ async function drvDeliver(rowIndex, orderNum) {
   // إذا رفض الموقع — أظهر تحذير واطلب تأكيد
   if (!geoGranted) {
     const proceed = await new Promise(resolve => {
-      // أنشئ popup التحذير
       const overlay = document.createElement('div');
       overlay.style.cssText = `
         position:fixed;inset:0;z-index:999999;
@@ -5449,18 +5557,14 @@ async function drvDeliver(rowIndex, orderNum) {
       overlay.innerHTML = `
         <div style="background:#fff;border-radius:20px;width:100%;max-width:340px;
           overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:slideUpCard .25s cubic-bezier(.22,1,.36,1)">
-          <!-- رأس أحمر -->
           <div style="background:linear-gradient(135deg,#b91c1c,#ef4444);padding:1.25rem 1.25rem .9rem;text-align:center">
             <div style="font-size:36px;margin-bottom:6px">📍</div>
             <div style="font-size:15px;font-weight:900;color:#fff">لم يتم تحديد موقعك!</div>
           </div>
-          <!-- جسم التحذير -->
           <div style="padding:1.1rem 1.25rem">
             <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;
               padding:.85rem 1rem;margin-bottom:1rem">
-              <div style="font-size:13px;font-weight:900;color:#991b1b;margin-bottom:5px">
-                ⚠️ تحذير مهم
-              </div>
+              <div style="font-size:13px;font-weight:900;color:#991b1b;margin-bottom:5px">⚠️ تحذير مهم</div>
               <div style="font-size:12.5px;color:#7f1d1d;line-height:1.65;font-weight:600">
                 هذا الطلب <strong>لن يُحتسب</strong> من ضمن:<br>
                 &nbsp;&nbsp;• طلباتك الموصّلة<br>
@@ -5474,15 +5578,12 @@ async function drvDeliver(rowIndex, orderNum) {
               <button id="geo-warn-cancel"
                 style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #e5e7eb;
                   background:#f9fafb;color:#374151;font-family:var(--font);font-size:13px;
-                  font-weight:800;cursor:pointer">
-                ← رجوع
-              </button>
+                  font-weight:800;cursor:pointer">← رجوع</button>
               <button id="geo-warn-confirm"
                 style="flex:1;padding:11px;border-radius:10px;border:none;
                   background:linear-gradient(135deg,#b91c1c,#ef4444);color:#fff;
                   font-family:var(--font);font-size:13px;font-weight:900;cursor:pointer">
-                تسليم بدون موقع
-              </button>
+                تسليم بدون موقع</button>
             </div>
           </div>
         </div>
@@ -5491,11 +5592,10 @@ async function drvDeliver(rowIndex, orderNum) {
       overlay.querySelector('#geo-warn-confirm').onclick = () => { document.body.removeChild(overlay); resolve(true); };
       overlay.querySelector('#geo-warn-cancel').onclick  = () => { document.body.removeChild(overlay); resolve(false); };
     });
-
-    if (!proceed) return; // السائق اختار الرجوع
+    if (!proceed) return;
   }
 
-  // سجّل التسليم (مع أو بدون موقع)
+  // ─── الخطوة 4: سجّل التسليم (مع الصورة والموقع) ────────────────────────────
   try {
     await api({ action: 'driverDeliver', rowIndex, lat, lng });
     const o = drvOrders.find(x => x.rowIndex === rowIndex);
