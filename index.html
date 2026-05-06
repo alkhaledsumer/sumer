@@ -1110,7 +1110,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.5 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.6 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1290,7 +1290,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.5</span>
+      <span class="ver-badge-topbar">v1.6</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1537,7 +1537,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.5</span>
+      <span class="ver-badge-topbar">v1.6</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2156,6 +2156,8 @@ function loadRememberMe() {
       const el = document.getElementById('drv-pass');
       if (el) el.value = data.pass;
     }
+    // دخول تلقائي بعد لحظة قصيرة
+    setTimeout(() => doLogin(), 400);
   } catch(e) {}
 }
 
@@ -2262,6 +2264,10 @@ async function doLogin() {
       document.getElementById('login-err').style.display='block'; return;
     }
     currentEmployee = user.name;
+    // ── تذكرني ──
+    if (document.getElementById('remember-me').checked) {
+      saveRememberMe('employee', document.getElementById('emp-user') ? document.getElementById('emp-user').value : '', pVal);
+    } else { clearRememberMe(); }
     showScreen('employee');
     document.getElementById('emp-name-badge').textContent  = '👤 ' + user.name;
     document.getElementById('emp-topbar-name').textContent = '👤 ' + user.name + ' · قسم الديليفري';
@@ -2288,6 +2294,10 @@ async function doLogin() {
       document.getElementById('login-err').style.display='block'; return;
     }
     currentDriver = user.name;
+    // ── تذكرني ──
+    if (document.getElementById('remember-me').checked) {
+      saveRememberMe('driver', drvPass, '');
+    } else { clearRememberMe(); }
     showScreen('driver');
     document.getElementById('drv-topbar-name').textContent = '🚗 ' + user.name;
     startDrvClock();
@@ -2302,6 +2312,10 @@ async function doLogin() {
     const r = await api({ action:'login', password:pass });
     if (r.success) {
       mgrPassword = pass;
+      // ── تذكرني ──
+      if (document.getElementById('remember-me').checked) {
+        saveRememberMe('manager', pass, '');
+      } else { clearRememberMe(); }
       showScreen('manager');
       requestNotifPermission();
       const _today = localDate(new Date());
@@ -2642,6 +2656,15 @@ function switchTab(name, btn) {
 // ══════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v1.6',
+    date: '2026-05-06',
+    changes: [
+      'fix(auth): "Remember Me" now correctly saves credentials and auto-logs in on next open',
+      'fix(notifications): rewrite sendNotif — use SW postMessage for reliable background push on PWA',
+      'feat(sound): upgrade alert tone to louder 3-note ascending chime (C5→E5→G5, square wave)',
+    ]
+  },
+  {
     version: 'v1.5',
     date: '2025-07-10',
     changes: [
@@ -2759,51 +2782,75 @@ window.addEventListener('load', () => {
 function sendNotif(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   playNotifSound();
+  const _tag = tag || ('sumer-' + Date.now());
   const _icon = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#252220"/><text x="32" y="44" font-size="36" text-anchor="middle">🚗</text></svg>');
-  const _notifTag = tag || ('sumer-' + Date.now());
-  const _opts = { body, icon: _icon, tag: _notifTag, requireInteraction: true, vibrate: [200, 100, 200], renotify: true };
 
-  // دالة مساعدة: أرسل الإشعار عبر SW أو مباشرة كـ fallback
-  function _doShow(reg) {
-    if (reg && reg.showNotification) {
-      reg.showNotification(title, _opts).catch(() => {
-        try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e2) {}
-      });
-    } else {
-      try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
+  // الطريقة الأفضل: أرسل postMessage للـ SW ليعرض الإشعار
+  // هذا يشتغل حتى لو التطبيق في الخلفية أو الشاشة مقفلة
+  function _sendViaMessage(reg) {
+    try {
+      const ctrl = reg.active || reg.waiting || reg.installing;
+      if (ctrl) {
+        ctrl.postMessage({ type: 'SHOW_NOTIF', title, body, tag: _tag });
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  function _fallbackDirect() {
+    try { new Notification(title, { body, icon: _icon, requireInteraction: true, tag: _tag }); } catch(e) {}
+  }
+
+  function _tryWithReg(reg) {
+    if (!reg) { _fallbackDirect(); return; }
+    // جرب postMessage أولاً (أفضل للـ PWA)
+    if (!_sendViaMessage(reg)) {
+      // fallback: showNotification مباشرة
+      if (reg.showNotification) {
+        reg.showNotification(title, {
+          body, icon: _icon, tag: _tag,
+          requireInteraction: true, vibrate: [200,100,200], renotify: true
+        }).catch(_fallbackDirect);
+      } else {
+        _fallbackDirect();
+      }
     }
   }
 
-  // لو عندنا SW مخزّن — استخدمه مباشرة
-  if (window._swReg) { _doShow(window._swReg); return; }
+  if (!('serviceWorker' in navigator)) { _fallbackDirect(); return; }
 
-  // ننتظر أي SW جاهز عبر navigator.serviceWorker.ready
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready.then(reg => {
-      window._swReg = reg; // خزّن للمرة الجاية
-      _doShow(reg);
-    }).catch(() => {
-      try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
-    });
-  } else {
-    // متصفح بدون SW دعم
-    try { new Notification(title, { body, icon: _icon, requireInteraction: true }); } catch(e) {}
-  }
+  // لو SW مخزّن وجاهز — استخدمه فوراً
+  if (window._swReg) { _tryWithReg(window._swReg); return; }
+
+  // ننتظر navigator.serviceWorker.ready
+  navigator.serviceWorker.ready.then(reg => {
+    window._swReg = reg;
+    _tryWithReg(reg);
+  }).catch(_fallbackDirect);
 }
 
 function playNotifSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.18, 0.36].forEach(t => {
-      const osc = ctx.createOscillator();
+    // نغمة تنبيه قوية: 3 نبضات تصاعدية بصوت عالٍ
+    const notes = [
+      { freq: 523, t: 0,    dur: 0.18 },  // C5
+      { freq: 659, t: 0.20, dur: 0.18 },  // E5
+      { freq: 784, t: 0.40, dur: 0.28 },  // G5 — أعلى وأطول
+    ];
+    notes.forEach(({ freq, t, dur }) => {
+      const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 880; osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.type = 'square'; // صوت أحدّ وأقوى من sine
       gain.gain.setValueAtTime(0, ctx.currentTime + t);
-      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + t + 0.05);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + 0.13);
+      gain.gain.linearRampToValueAtTime(0.75, ctx.currentTime + t + 0.03);
+      gain.gain.setValueAtTime(0.75, ctx.currentTime + t + dur - 0.04);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + dur);
       osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.16);
+      osc.stop(ctx.currentTime + t + dur + 0.01);
     });
   } catch(e) {}
 }
