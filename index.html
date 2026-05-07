@@ -1117,7 +1117,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.17 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.21 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1305,7 +1305,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.17</span>
+      <span class="ver-badge-topbar">v1.21</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1318,6 +1318,7 @@ tr:hover td{background:var(--gray-50)}
   <!-- EMP TABS -->
   <div class="tabs-bar" style="flex-shrink:0">
     <button class="tab-btn active" id="emp-tab-btn-form"    onclick="switchEmpTab('form',this)">📝 تسجيل طلب</button>
+    <button class="tab-btn"        id="emp-tab-btn-delivery" onclick="switchEmpTab('delivery',this)">🚚 شركة توصيل</button>
     <button class="tab-btn"        id="emp-tab-btn-history" onclick="switchEmpTab('history',this)">📋 السجل</button>
 
   </div>
@@ -1512,8 +1513,84 @@ tr:hover td{background:var(--gray-50)}
     </div>
   </div>
 
+
+
   <div class="toast" id="emp-toast">✅ تم تسجيل الطلب بنجاح!</div>
   </div><!-- end emp-tab-form -->
+  <!-- ── TAB DELIVERY COMPANY ── -->
+  <div id="emp-tab-delivery" style="display:none;flex:1;overflow-y:auto;background:var(--gray-100)">
+    <div style="padding:1rem 1.25rem;max-width:680px;margin:0 auto">
+
+      <!-- اختيار الشركة -->
+      <div class="fcard" style="margin-bottom:1rem">
+        <div class="fcard-title">🚚 اختيار شركة التوصيل</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div id="dc-btn-baly" onclick="selectDeliveryCompany('BALY')"
+            style="flex:1;min-width:120px;border:2px solid var(--gray-200);border-radius:var(--r-lg);padding:14px 10px;text-align:center;cursor:pointer;transition:var(--transition);background:var(--white)">
+            <div style="font-size:22px;margin-bottom:4px">🟣</div>
+            <div style="font-size:14px;font-weight:800;color:var(--gray-700)">BALY</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Baly</div>
+          </div>
+          <div id="dc-btn-tolebat" onclick="selectDeliveryCompany('TALABAT')"
+            style="flex:1;min-width:120px;border:2px solid var(--gray-200);border-radius:var(--r-lg);padding:14px 10px;text-align:center;cursor:pointer;transition:var(--transition);background:var(--white)">
+            <div style="font-size:22px;margin-bottom:4px">🟠</div>
+            <div style="font-size:14px;font-weight:800;color:var(--gray-700)">TALABAT</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Tolebat</div>
+          </div>
+          <div id="dc-btn-tors" onclick="selectDeliveryCompany('TOTERS')"
+            style="flex:1;min-width:120px;border:2px solid var(--gray-200);border-radius:var(--r-lg);padding:14px 10px;text-align:center;cursor:pointer;transition:var(--transition);background:var(--white)">
+            <div style="font-size:22px;margin-bottom:4px">🟡</div>
+            <div style="font-size:14px;font-weight:800;color:var(--gray-700)">TOTERS</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Tors</div>
+          </div>
+        </div>
+        <input type="hidden" id="dc-company">
+        <div id="dc-company-err" style="display:none;margin-top:8px;font-size:12px;color:var(--danger);font-weight:700">⚠️ يرجى اختيار الشركة</div>
+      </div>
+
+      <!-- بيانات الطلب -->
+      <div class="fcard" style="margin-bottom:1rem">
+        <div class="fcard-title">📋 بيانات الطلب</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg">
+            <label class="fl">رقم الوصل *</label>
+            <input type="text" id="dc-receipt" placeholder="رقم وصل الشركة">
+          </div>
+          <div class="fg">
+            <label class="fl">اسم الزبون *</label>
+            <input type="text" id="dc-customer" placeholder="اسم الزبون">
+          </div>
+          <div class="fg">
+            <label class="fl">مبلغ الفاتورة *</label>
+            <input type="number" id="dc-amount" placeholder="0.000">
+          </div>
+          <div class="fg">
+            <label class="fl">⏰ وقت استلام سائق الشركة</label>
+            <input type="time" id="dc-drivertime" style="width:100%">
+          </div>
+          <div class="fg" style="grid-column:1/-1">
+            <label class="fl">📝 ملاحظات</label>
+            <textarea id="dc-notes" placeholder="ملاحظات (اختياري)" rows="3" style="font-family:var(--font);font-size:13px;line-height:1.6;resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- زر التسجيل -->
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" id="dc-submit-btn" onclick="submitDeliveryOrder()" style="flex:2;padding:13px">
+          ✅ تسجيل وإغلاق الطلب
+        </button>
+        <button class="btn" onclick="clearDeliveryForm()" style="flex:1">🗑 مسح</button>
+      </div>
+
+      <!-- ملاحظة توضيحية -->
+      <div style="margin-top:1rem;background:#f0f7ff;border:1px solid var(--accent-md);border-radius:var(--r-sm);padding:.75rem 1rem;font-size:12px;color:var(--accent-dk);line-height:1.7">
+        ℹ️ طلبات شركات التوصيل تُسجَّل <strong>مباشرة كـ "تم التسليم"</strong> — الشركة تتولى التوصيل وما تحتاج تكليف سائق داخلي.
+      </div>
+
+    </div>
+  </div>
+
 
   <!-- ── TAB HISTORY ── -->
   <div id="emp-tab-history" style="display:none;flex:1;overflow-y:auto;background:var(--gray-100)">
@@ -1557,7 +1634,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.17</span>
+      <span class="ver-badge-topbar">v1.21</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2690,6 +2767,116 @@ function clearEmpForm() {
 }
 
 // ══════════════════════════════════════
+//  DELIVERY COMPANY ORDERS
+// ══════════════════════════════════════
+function selectDeliveryCompany(company) {
+  document.getElementById('dc-company').value = company;
+  document.getElementById('dc-company-err').style.display = 'none';
+  // ألوان الأزرار
+  const colors = { 'BALY': { border:'#7c3aed', bg:'#f5f3ff' }, 'TALABAT': { border:'#ea580c', bg:'#fff7ed' }, 'TOTERS': { border:'#ca8a04', bg:'#fefce8' } };
+  ['BALY','TALABAT','TOTERS'].forEach(c => {
+    const id = c === 'BALY' ? 'dc-btn-baly' : c === 'TALABAT' ? 'dc-btn-tolebat' : 'dc-btn-tors';
+    const el = document.getElementById(id);
+    if (c === company) {
+      el.style.borderColor = colors[c].border;
+      el.style.background  = colors[c].bg;
+    } else {
+      el.style.borderColor = 'var(--gray-200)';
+      el.style.background  = 'var(--white)';
+    }
+  });
+}
+
+async function submitDeliveryOrder() {
+  const company  = document.getElementById('dc-company').value.trim();
+  const receipt  = document.getElementById('dc-receipt').value.trim();
+  const customer = document.getElementById('dc-customer').value.trim();
+  const amount   = document.getElementById('dc-amount').value.trim();
+  const drvTime  = document.getElementById('dc-drivertime').value.trim();
+  const notes    = document.getElementById('dc-notes').value.trim();
+
+  if (!company)  { document.getElementById('dc-company-err').style.display='block'; return; }
+  if (!receipt)  { alert('يرجى إدخال رقم الوصل'); return; }
+  if (!customer) { alert('يرجى إدخال اسم الزبون'); return; }
+  if (!amount)   { alert('يرجى إدخال مبلغ الفاتورة'); return; }
+
+  const orderNum = genDeliveryOrderId();
+  const now  = new Date();
+  const timeNow = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  const today = localDate(now);
+
+  const btn = document.getElementById('dc-submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ جاري الحفظ...';
+  try {
+    await api({
+      action: 'addOrder',
+      orderNum,
+      customer,
+      phone: '—',
+      invoice: receipt,
+      amount,
+      delivery: 0,
+      total: parseFloat(amount)||0,
+      area: company,
+      zone: '',
+      incentive: 0,
+      address: '',
+      driver: company,
+      outTime: drvTime || timeNow,
+      driverTime: drvTime || timeNow,
+      deliveredAt: timeNow,
+      items: 'طلب شركة ' + company + ' — وصل: ' + receipt,
+      notes,
+      employee: currentEmployee,
+      registeredAt: timeNow,
+      status: 'تم التسليم'
+    });
+    // احفظ في الجلسة
+    sessionOrders.unshift({
+      rowIndex: -1, orderNum, customer, phone: '—',
+      invoice: receipt, amount: parseFloat(amount)||0,
+      delivery: 0, total: parseFloat(amount)||0,
+      area: company, zone: '', incentive: 0, address: '',
+      driver: company, outTime: drvTime||timeNow,
+      driverTime: drvTime||timeNow, deliveredAt: timeNow,
+      items: 'طلب شركة ' + company + ' — وصل: ' + receipt,
+      notes, employee: currentEmployee,
+      date: today, status: 'تم التسليم',
+      registeredAt: timeNow + ' ' + today.slice(5,10).replace('-','/')
+    });
+    clearDeliveryForm();
+    const t = document.getElementById('emp-toast');
+    t.style.display = 'block'; setTimeout(()=>t.style.display='none', 3500);
+  } catch(e) { alert('حدث خطأ، تأكد من رابط الـ API'); }
+  btn.disabled = false; btn.textContent = '✅ تسجيل وإغلاق الطلب';
+}
+
+function clearDeliveryForm() {
+  document.getElementById('dc-company').value = '';
+  document.getElementById('dc-receipt').value  = '';
+  document.getElementById('dc-customer').value = '';
+  document.getElementById('dc-amount').value   = '';
+  document.getElementById('dc-notes').value    = '';
+  document.getElementById('dc-company-err').style.display = 'none';
+  ['dc-btn-baly','dc-btn-tolebat','dc-btn-tors'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.borderColor = 'var(--gray-200)';
+    el.style.background  = 'var(--white)';
+  });
+  const n = new Date();
+  document.getElementById('dc-drivertime').value =
+    String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+
+function genDeliveryOrderId() {
+  const n = new Date();
+  const yy = String(n.getFullYear()).slice(2);
+  const mm = String(n.getMonth()+1).padStart(2,'0');
+  const dd = String(n.getDate()).padStart(2,'0');
+  return 'DC' + yy + mm + dd + '-' + String(Math.floor(1000+Math.random()*9000));
+}
+
+// ══════════════════════════════════════
 //  MANAGER TABS
 // ══════════════════════════════════════
 // ══════════════════════════════════════
@@ -3062,7 +3249,7 @@ function renderDriverPerfTable() {
   document.getElementById('dp-thead').innerHTML = `<tr>
     <th style="text-align:center">#</th>
     <th>${cfg.colLabel}</th>
-    <th style="text-align:center">طلبات</th>
+    <th style="text-align:center">TALABAT</th>
     <th style="text-align:center">لها توقيت</th>
     <th style="text-align:center">متوسط الوقت</th>
     <th style="text-align:center">أسرع</th>
@@ -3295,7 +3482,7 @@ function printDriverPerfReport() {
   });
   const tableHtml = `<table>
     <thead><tr>
-      <th>#</th><th>${cfg.colLabel}</th><th style="text-align:center">طلبات</th><th style="text-align:center">لها توقيت</th>
+      <th>#</th><th>${cfg.colLabel}</th><th style="text-align:center">TALABAT</th><th style="text-align:center">لها توقيت</th>
       <th style="text-align:center">متوسط الوقت</th><th style="text-align:center">أسرع</th><th style="text-align:center">أبطأ</th>
       <th style="text-align:center">متأخرات</th><th style="text-align:center">معدل التأخر</th><th style="text-align:center">التقييم</th>
     </tr></thead><tbody>${tableRows}</tbody>
@@ -3365,6 +3552,38 @@ function printDriverDetailReport() {
 //  CHANGELOG
 // ══════════════════════════════════════
 const CHANGELOG = [
+  {
+    version: 'v1.21',
+    date: '2026-05-07',
+    changes: [
+      'fix(delivery): تغيير أسماء الشركات — بلي → BALY، طلبات → TALABAT',
+    ]
+  },
+  {
+    version: 'v1.20',
+    date: '2026-05-07',
+    changes: [
+      'fix(delivery): إصلاح تبويب شركة توصيل — كان فارغاً بسبب وضعه داخل emp-tab-form',
+      'fix(delivery): تغيير اسم تورز إلى TOTERS',
+    ]
+  },
+  {
+    version: 'v1.19',
+    date: '2026-05-07',
+    changes: [
+      'feat(delivery): إضافة شركة تورز (Tors) لقائمة شركات التوصيل الخارجية',
+    ]
+  },
+  {
+    version: 'v1.18',
+    date: '2026-05-07',
+    changes: [
+      'feat(employee): إضافة تبويب "شركة توصيل" في نموذج الموظف',
+      'feat(delivery): دعم شركتي بلي وطلبات — نموذج مخصص: رقم وصل، زبون، مبلغ، وقت، ملاحظات',
+      'feat(delivery): طلبات شركات التوصيل تُسجَّل مباشرة بحالة تم التسليم بدون مرور بمرحلة السائق',
+      'feat(delivery): رقم الطلب يبدأ بـ DC بدل SO لتمييز طلبات شركات التوصيل',
+    ]
+  },
   {
     version: 'v1.17',
     date: '2026-05-07',
@@ -4274,13 +4493,21 @@ async function deleteArea(name) {
 function switchEmpTab(name, btn) {
   document.querySelectorAll('#screen-employee .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const formEl    = document.getElementById('emp-tab-form');
-  const historyEl = document.getElementById('emp-tab-history');
+  const formEl     = document.getElementById('emp-tab-form');
+  const deliveryEl = document.getElementById('emp-tab-delivery');
+  const historyEl  = document.getElementById('emp-tab-history');
+  formEl.style.display     = 'none';
+  deliveryEl.style.display = 'none';
+  historyEl.style.display  = 'none';
   if (name === 'form') {
-    formEl.style.display    = 'flex';
-    historyEl.style.display = 'none';
+    formEl.style.display = 'flex';
+  } else if (name === 'delivery') {
+    deliveryEl.style.display = 'block';
+    // ضبط الوقت التلقائي
+    const n = new Date();
+    document.getElementById('dc-drivertime').value =
+      String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
   } else {
-    formEl.style.display    = 'none';
     historyEl.style.display = 'block';
     loadHistoryOrders();
   }
@@ -4462,7 +4689,7 @@ async function empCancelOrder(rowIndex, orderNum, btn) {
   }
 }
 
-const EXTERNAL_DRIVER_NAMES = ['أوبر', 'كريم', 'بلي'];
+const EXTERNAL_DRIVER_NAMES = ['أوبر', 'كريم', 'BALY'];
 function isExternalDriver(driverName) {
   if (!driverName) return false;
   return EXTERNAL_DRIVER_NAMES.some(name => String(driverName).startsWith(name));
@@ -4492,7 +4719,7 @@ async function empExternalDeliver(rowIndex, orderNum, btn) {
           <div style="background:#e4f0fb;border:1.5px solid #a8cce8;border-radius:12px;
             padding:.85rem 1rem;margin-bottom:1rem;font-size:12.5px;color:#134878;
             line-height:1.65;font-weight:600">
-            📌 ارفع صورة من تطبيق بلي أو كريم تُثبت دفع الرحلة
+            📌 ارفع صورة من تطبيق BALY أو كريم تُثبت دفع الرحلة
           </div>
           <div id="emp-ss-preview-wrap" style="display:none;margin-bottom:.9rem;text-align:center">
             <img id="emp-ss-preview-img"
