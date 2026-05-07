@@ -5755,12 +5755,30 @@ function setModalMode(mode) {
     const areasSel = document.getElementById('om-area');
     areasSel.innerHTML = '<option value="">-- اختر --</option>' +
       (window._areasCache||[]).map(a=>`<option ${a.name===o.area?'selected':''}>${a.name}</option>`).join('');
-    const empDriverSel = document.getElementById('e-driver');
-    const drivers = empDriverSel ? Array.from(empDriverSel.options).map(op=>op.value).filter(Boolean) : [];
-    document.getElementById('om-driver').innerHTML = '<option value="">-- اختر --</option>' +
-      drivers.map(d=>`<option ${d===o.driver?'selected':''}>${d}</option>`).join('');
+    // اجيب السواق من السيرفر دايماً عند فتح المودال
+    const driverSel = document.getElementById('om-driver');
+    driverSel.innerHTML = '<option value="">⏳ جاري التحميل...</option>';
     document.getElementById('om-status').value = o.status || 'خارج';
     omUpdateTotal();
+    // جيب السواق الطازجين من السيرفر
+    api({ action: 'getDriversFromUsers' }).then(r => {
+      let drivers = (r && r.success && r.drivers && r.drivers.length > 0)
+        ? r.drivers.slice()
+        : (_driversCache && _driversCache.length > 0 ? _driversCache.slice() : []);
+      if (r && r.success && r.drivers) _driversCache = r.drivers;
+      // لو السائق الحالي غير موجود في القائمة، أضفه حتى لا يضيع
+      if (o.driver && o.driver !== 'undefined' && !drivers.includes(o.driver)) {
+        drivers.unshift(o.driver);
+      }
+      driverSel.innerHTML = '<option value="">-- اختر --</option>' +
+        drivers.map(d => `<option ${d === o.driver ? 'selected' : ''}>${d}</option>`).join('');
+    }).catch(() => {
+      // لو فشل الاتصال، استخدم الكاش
+      let drivers = (_driversCache && _driversCache.length > 0) ? _driversCache.slice() : [];
+      if (o.driver && o.driver !== 'undefined' && !drivers.includes(o.driver)) drivers.unshift(o.driver);
+      driverSel.innerHTML = '<option value="">-- اختر --</option>' +
+        drivers.map(d => `<option ${d === o.driver ? 'selected' : ''}>${d}</option>`).join('');
+    });
   }
 }
 
