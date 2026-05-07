@@ -188,7 +188,7 @@ body{font-family:var(--font);background:var(--gray-100);color:var(--gray-800);mi
   box-shadow: -8px 0 48px rgba(0,0,0,.07);
 }
 .login-form-box { width: 100%; max-width: 380px; }
-.role-grid-new { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.role-grid-new { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .role-card-new {
   border: 2px solid var(--gray-200);
   border-radius: var(--r-lg); padding: 15px 10px;
@@ -1117,7 +1117,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.21 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.22 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1149,6 +1149,11 @@ tr:hover td{background:var(--gray-50)}
             <div class="rcn-icon">🚗</div>
             <div class="rcn-label">سائق</div>
             <div class="rcn-sub">استلام وتسليم الطلبات</div>
+          </div>
+          <div class="role-card-new" id="rc-res" onclick="selectRole('reservations')">
+            <div class="rcn-icon">📋</div>
+            <div class="rcn-label">حجوزات</div>
+            <div class="rcn-sub">متابعة الطلبات</div>
           </div>
         </div>
       </div>
@@ -1187,6 +1192,21 @@ tr:hover td{background:var(--gray-50)}
           </div>
         </div>
         <div id="drv-name-preview" style="display:none;background:var(--accent-lt);border:1px solid var(--accent-md);border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:800;color:var(--accent);text-align:center"></div>
+      </div>
+
+      <!-- حقول الحجوزات -->
+      <div class="pass-box" id="res-pass-box">
+        <div class="login-field">
+          <label class="login-label">كلمة السر</label>
+          <div class="login-input-wrap">
+            <span class="login-input-icon">🔑</span>
+            <input type="password" id="res-pass" placeholder="••••••••"
+              oninput="autoFillName('res')"
+              onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"
+              autocapitalize="none" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div id="res-name-preview" style="display:none;background:var(--accent-lt);border:1px solid var(--accent-md);border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:800;color:var(--accent);text-align:center"></div>
       </div>
 
     <!-- حقول المدير -->
@@ -1305,7 +1325,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.21</span>
+      <span class="ver-badge-topbar">v1.22</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1366,12 +1386,7 @@ tr:hover td{background:var(--gray-50)}
       align-items: center;
       height: 100%;
       white-space: nowrap;
-      animation: ticker-scroll 28s linear infinite;
-    }
-    .ticker-inner:hover { animation-play-state: paused; }
-    @keyframes ticker-scroll {
-      0%   { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+      will-change: transform;
     }
     .ticker-item {
       display: inline-flex;
@@ -1380,13 +1395,13 @@ tr:hover td{background:var(--gray-50)}
       color: #fff;
       font-size: 12.5px;
       font-weight: 600;
-      padding: 0 32px 0 0;
+      padding: 0 0 0 32px;
     }
     .ticker-item .t-icon { font-size: 14px; flex-shrink: 0; }
     .ticker-sep {
       color: rgba(255,255,255,.3);
       font-size: 18px;
-      padding: 0 10px 0 0;
+      padding: 0 0 0 10px;
       flex-shrink: 0;
     }
   </style>
@@ -1407,6 +1422,20 @@ tr:hover td{background:var(--gray-50)}
         <span class="ticker-item"><span class="t-icon">🚗</span> تأكد من اختيار السائق الصحيح</span>
         <span class="ticker-sep">◆</span>
         <span class="ticker-item"><span class="t-icon">📝</span> أدخل تفاصيل الطلب بدقة — المنتجات والكميات</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">🔔</span> حدّث حالة الطلب فور التسليم — لا تتركه معلقاً</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">📲</span> ابقى على تواصل مع قسم الحجوزات لتنسيق التوصيل</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">✅</span> تحقق من العنوان بالتفصيل — حي، شارع، أقرب نقطة دالة</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">💬</span> سجّل أي ملاحظة خاصة من الزبون في خانة الملاحظات</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">🧾</span> لا تسجل طلب ناقص — اكتمال البيانات يمنع مشاكل التوصيل</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">🕐</span> سجّل وقت التسليم لحظة تسليم السائق الطلب فعلياً — الدقة في التوقيت ضرورية</span>
+        <span class="ticker-sep">◆</span>
+        <span class="ticker-item"><span class="t-icon">🚫</span> ممنوع تنفيذ أي طلب توصيل خارج نظام إدارة التوصيل</span>
         <span class="ticker-sep">◆</span>
       </div>
     </div>
@@ -1605,12 +1634,6 @@ tr:hover td{background:var(--gray-50)}
                        color:var(--gray-700);background:var(--white);cursor:pointer">
           <option value="0">اليوم</option>
           <option value="1">أمس</option>
-          <option value="2">قبل يومين</option>
-          <option value="3">قبل 3 أيام</option>
-          <option value="4">قبل 4 أيام</option>
-          <option value="5">قبل 5 أيام</option>
-          <option value="6">قبل 6 أيام</option>
-          <option value="7">قبل أسبوع</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="loadHistoryOrders()">↻ تحديث</button>
         <span id="hist-count-badge" style="margin-right:auto;font-size:12px;font-weight:700;color:var(--gray-400)"></span>
@@ -1634,7 +1657,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.21</span>
+      <span class="ver-badge-topbar">v1.22</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2466,9 +2489,11 @@ function selectRole(role) {
   document.getElementById('rc-emp').classList.toggle('selected', role==='employee');
   document.getElementById('rc-mgr').classList.toggle('selected', role==='manager');
   document.getElementById('rc-drv').classList.toggle('selected', role==='driver');
+  document.getElementById('rc-res').classList.toggle('selected', role==='reservations');
   document.getElementById('pass-box').classList.toggle('show', role==='manager');
   document.getElementById('emp-pass-box').classList.toggle('show', role==='employee');
   document.getElementById('drv-pass-box').classList.toggle('show', role==='driver');
+  document.getElementById('res-pass-box').classList.toggle('show', role==='reservations');
 }
 async function autoFillName(role) {
   const passEl = document.getElementById(role+'-pass');
@@ -2476,7 +2501,7 @@ async function autoFillName(role) {
   const pass = passEl.value;
   if (!pass) { preview.style.display='none'; return; }
   const user = await getUserByPassword(pass);
-  if (user && user.role === role) {
+  if (user && (user.role === role || (role === 'res' && user.role === 'reservations'))) {
     preview.style.display = 'block';
     preview.textContent = '👤 ' + user.name;
   } else {
@@ -2524,6 +2549,36 @@ async function doLogin() {
     startEmpPolling();
     return;
   }
+  // ── حجوزات ──
+  if (selectedRole === 'reservations') {
+    const resPass = document.getElementById('res-pass').value.trim();
+    document.getElementById('login-btn').disabled = true;
+    document.getElementById('login-btn-text').textContent = '⏳ جاري التحقق...';
+    let user = null;
+    try {
+      user = await getUserByPassword(resPass);
+    } catch(e) {
+      document.getElementById('login-btn').disabled = false;
+      document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
+      document.getElementById('login-err').textContent = '⚠️ تعذر الاتصال — تحقق من الإنترنت';
+      document.getElementById('login-err').style.display = 'block'; return;
+    }
+    document.getElementById('login-btn').disabled = false;
+    document.getElementById('login-btn-text').textContent = 'تسجيل الدخول';
+    if (!user || user.role !== 'reservations') {
+      document.getElementById('login-err').textContent='كلمة السر غير صحيحة';
+      document.getElementById('login-err').style.display='block'; return;
+    }
+    if (document.getElementById('remember-me').checked) {
+      saveRememberMe('reservations', resPass, '');
+    } else { clearRememberMe(); }
+    showScreen('reservations');
+    document.getElementById('res-topbar-name').textContent = '📋 ' + user.name;
+    startResPolling();
+    requestNotifPermission();
+    return;
+  }
+
   // ── سائق ──
   if (selectedRole === 'driver') {
     const drvPass = document.getElementById('drv-pass').value.trim();
@@ -2579,7 +2634,7 @@ async function doLogin() {
   } catch(e) { alert('تعذر الاتصال، تحقق من الرابط'); }
 }
 function goLogin() {
-  stopAllMgrPolling(); stopDriverPolling(); stopEmpPolling();
+  stopAllMgrPolling(); stopDriverPolling(); stopEmpPolling(); stopResPolling();
   showScreen('login'); mgrPassword=''; selectedRole=''; currentEmployee=''; currentDriver='';
   _mgrKnownOrders.clear(); _mgrKnownDelivered.clear();
   _empKnownStatuses = {};
@@ -2589,7 +2644,10 @@ function goLogin() {
   if(document.getElementById('drv-name-preview')) document.getElementById('drv-name-preview').style.display='none';
   document.getElementById('mgr-pass').value='';
   document.getElementById('pass-box').classList.remove('show');
-  ['rc-emp','rc-mgr'].forEach(id=>document.getElementById(id).classList.remove('selected'));
+  document.getElementById('res-pass-box').classList.remove('show');
+  if(document.getElementById('res-pass')) document.getElementById('res-pass').value='';
+  if(document.getElementById('res-name-preview')) document.getElementById('res-name-preview').style.display='none';
+  ['rc-emp','rc-mgr','rc-drv','rc-res'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('selected');});
 }
 function showScreen(name) {
   if (name === 'login') loadDriversList();
@@ -3553,7 +3611,7 @@ function printDriverDetailReport() {
 // ══════════════════════════════════════
 const CHANGELOG = [
   {
-    version: 'v1.21',
+    version: 'v1.22',
     date: '2026-05-07',
     changes: [
       'fix(delivery): تغيير أسماء الشركات — بلي → BALY، طلبات → TALABAT',
@@ -3795,7 +3853,7 @@ async function testNotifPermission() {
 }
 
 function _updateNotifBell(active) {
-  ['notif-status-btn','drv-notif-btn','emp-notif-btn'].forEach(id => {
+  ['notif-status-btn','drv-notif-btn','emp-notif-btn','res-notif-btn'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = active ? '🔔' : '🔕';
@@ -6878,6 +6936,351 @@ async function drvDeliver(rowIndex, orderNum) {
     </div>
   </div>
 </div>
+
+
+<script>
+(function() {
+  function initTicker() {
+    var inner = document.getElementById('emp-ticker');
+    if (!inner) return;
+    // كرر المحتوى مرتين لضمان الاستمرارية
+    inner.innerHTML = inner.innerHTML + inner.innerHTML;
+    var speed = 80; // بكسل في الثانية
+    var pos = 0;
+    var paused = false;
+    var halfW = 0;
+    var last = null;
+    inner.addEventListener('mouseenter', function(){ paused = true; });
+    inner.addEventListener('mouseleave', function(){ paused = false; });
+    function step(ts) {
+      if (!halfW) halfW = inner.scrollWidth / 2;
+      if (last === null) last = ts;
+      var dt = (ts - last) / 1000;
+      last = ts;
+      if (!paused) {
+        pos += speed * dt;
+        if (pos >= halfW) pos = 0;
+        inner.style.transform = 'translateX(' + pos + 'px)';
+      }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTicker);
+  } else {
+    setTimeout(initTicker, 100);
+  }
+})();
+</script>
+
+<!-- ══════════════════════════════════════════ -->
+<!--         SCREEN — RESERVATIONS              -->
+<!-- ══════════════════════════════════════════ -->
+<style>
+  #screen-reservations{display:none;flex-direction:column;height:100vh;overflow:hidden}
+  #screen-reservations.active{display:flex}
+  .res-topbar{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:0 16px;height:52px;display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+  .res-topbar-title{font-size:15px;font-weight:900;flex:1}
+  .res-body{flex:1;overflow-y:auto;padding:12px 14px;background:#f0f4f8}
+  .res-card{background:#fff;border-radius:var(--r);box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:10px;overflow:hidden;border:1px solid var(--gray-200);border-right:4px solid #ccc}
+  .res-card.status-out{border-right-color:#f59e0b}
+  .res-card.status-delivered{border-right-color:#10b981}
+  .res-card.status-cancelled{border-right-color:#ef4444}
+  .res-card.status-pending{border-right-color:#3b82f6}
+  .res-card-header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--gray-100)}
+  .res-order-id{font-size:11px;font-weight:800;color:var(--accent);font-family:var(--mono)}
+  .res-order-time{font-size:11px;color:var(--gray-400);margin-right:auto}
+  .res-status-badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .res-card-body{padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .res-field{font-size:12px}
+  .res-field-label{color:var(--gray-400);font-size:10px;font-weight:700;margin-bottom:2px}
+  .res-field-value{font-weight:700;color:#1e293b}
+  .res-empty{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:14px}
+  .res-filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .res-filter-btn{background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--gray-500);cursor:pointer;font-family:var(--font);transition:var(--transition)}
+  .res-filter-btn.active{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-color:#0f172a;box-shadow:0 2px 8px rgba(15,23,42,.25)}
+  .res-counter{font-size:12px;font-weight:800;color:var(--gray-500);padding:4px 0 10px}
+  .res-refresh-btn{background:linear-gradient(135deg,#0f172a,#1e3a5f);border:none;color:#fff;border-radius:var(--r-sm);padding:6px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:var(--font);box-shadow:0 2px 8px rgba(15,23,42,.2)}
+  /* شريط تنبيهات الحجوزات */
+  .res-ticker-wrap{background:linear-gradient(135deg,#134878 0%,#1a5fa0 100%);border-bottom:2px solid #2a7fd4;box-shadow:0 2px 8px rgba(0,0,0,.18);display:flex;align-items:center;flex-shrink:0;overflow:hidden;height:34px;position:relative}
+  .res-ticker-label{background:rgba(0,0,0,.22);color:#a8ddf8;font-weight:900;font-size:11px;letter-spacing:.5px;padding:0 12px;height:100%;display:flex;align-items:center;gap:5px;flex-shrink:0;border-left:2px solid rgba(255,255,255,.12);z-index:2;white-space:nowrap}
+  .res-ticker-track{flex:1;overflow:hidden;height:100%}
+  .res-ticker-inner{display:flex;align-items:center;height:100%;white-space:nowrap;will-change:transform}
+  .res-ticker-item{display:inline-flex;align-items:center;gap:6px;color:#e0f4ff;font-size:11.5px;font-weight:600;padding:0 0 0 28px}
+  .res-ticker-sep{color:rgba(255,255,255,.25);font-size:16px;padding:0 0 0 8px;flex-shrink:0}
+</style>
+
+<div id="screen-reservations" class="screen">
+  <!-- Topbar -->
+  <div class="res-topbar">
+    <span style="font-size:20px">📋</span>
+    <div class="res-topbar-title">قسم الحجوزات</div>
+    <span id="res-topbar-name" style="font-size:12px;opacity:.75">حجوزات</span>
+    <span id="res-time" style="font-size:12px;font-family:var(--mono);margin-right:8px;opacity:.75">--:--</span>
+    <button id="res-notif-btn" onclick="testNotifPermission()" title="تفعيل الإشعارات"
+      style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔔</button>
+    <button onclick="goLogin()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:var(--r-sm);padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">خروج</button>
+  </div>
+
+  <!-- شريط تنبيهات الحجوزات -->
+  <div class="res-ticker-wrap">
+    <div class="res-ticker-label"><span>📢</span> تنبيهات</div>
+    <div class="res-ticker-track">
+      <div class="res-ticker-inner" id="res-ticker">
+        <span class="res-ticker-item">📞 تواصل مع الموظف فور استلام الحجز للتأكيد الفوري</span>
+        <span class="res-ticker-sep">◆</span>
+        <span class="res-ticker-item">🕐 تأكد من وقت التسليم المطلوب وأبلغ الموظف بأي تعديل</span>
+        <span class="res-ticker-sep">◆</span>
+        <span class="res-ticker-item">📍 تحقق من صحة العنوان قبل تثبيت الحجز</span>
+        <span class="res-ticker-sep">◆</span>
+        <span class="res-ticker-item">💬 سجل أي ملاحظة خاصة من الزبون في خانة الملاحظات</span>
+        <span class="res-ticker-sep">◆</span>
+        <span class="res-ticker-item">🔔 راجع الطلبات الجديدة بانتظام — كل دقيقة يُحسب</span>
+        <span class="res-ticker-sep">◆</span>
+        <span class="res-ticker-item">✅ الطلبات المكتملة لا تظهر هنا — فقط طلبات اليوم الجارية</span>
+        <span class="res-ticker-sep">◆</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="res-body">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="res-counter" id="res-counter">جاري التحميل...</div>
+      <button class="res-refresh-btn" onclick="loadResOrders()">🔄 تحديث</button>
+    </div>
+    <div class="res-filters">
+      <button class="res-filter-btn active" id="res-f-all" onclick="resFilter('all')">الكل</button>
+      <button class="res-filter-btn" id="res-f-pending" onclick="resFilter('pending')">⏳ قيد التوصيل</button>
+      <button class="res-filter-btn" id="res-f-delivered" onclick="resFilter('delivered')">✅ تم التسليم</button>
+      <button class="res-filter-btn" id="res-f-cancelled" onclick="resFilter('cancelled')">❌ ملغي</button>
+    </div>
+    <div id="res-orders-list">
+      <div class="res-empty">⏳ جاري جلب الطلبات...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  RESERVATIONS SCREEN LOGIC
+// ══════════════════════════════════════
+let _resOrders = [];
+let _resFilter = 'all';
+let _resPollingTimer = null;
+let _resKnownOrders    = new Set(); // طلبات معروفة — لرصد الجديد
+let _resKnownDelivered = new Set(); // طلبات مسلّمة — لرصد التسليم
+
+function resFilter(f) {
+  _resFilter = f;
+  ['all','pending','delivered','cancelled'].forEach(k => {
+    document.getElementById('res-f-'+k).classList.toggle('active', k===f);
+  });
+  renderResOrders();
+}
+
+function resStatusLabel(status) {
+  const map = {
+    'new': {text:'جديد', bg:'#e4f5ec', color:'#1e6840'},
+    'pending': {text:'قيد التوصيل', bg:'#e4f0fb', color:'#134878'},
+    'out': {text:'خرج للتوصيل', bg:'#fff8e0', color:'#886000'},
+    'delivered': {text:'تم التسليم', bg:'#e4f5ec', color:'#1e6840'},
+    'cancelled': {text:'ملغي', bg:'#fdf0f0', color:'#a01818'},
+    'returned': {text:'مرتجع', bg:'#fdf0f0', color:'#a01818'},
+  };
+  return map[status] || {text: status || 'غير محدد', bg:'#f2f1ee', color:'#4e4a45'};
+}
+
+
+function to12hr(t) {
+  if (!t || t === '-') return '-';
+  const parts = String(t).match(/(\d{1,2}):(\d{2})/);
+  if (!parts) return t;
+  let h = parseInt(parts[1]), m = parts[2];
+  const ampm = h >= 12 ? 'م' : 'ص';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + ampm;
+}
+function resStatusClass(status) {
+  const s = String(status||'').trim();
+  if (['تم التسليم','delivered'].includes(s)) return 'status-delivered';
+  if (['ملغي','مرتجع','cancelled','returned'].includes(s)) return 'status-cancelled';
+  if (['خارج','out'].includes(s)) return 'status-out';
+  return 'status-pending';
+}
+
+function renderResOrders() {
+  const list = document.getElementById('res-orders-list');
+  const today = localDate(new Date());
+
+  let allToday = _resOrders.filter(o => {
+    const oDate = (o.outtime||'').substring(0,10) || o.date || '';
+    return oDate === today;
+  });
+
+  let filtered = allToday.filter(o => {
+    const s = String(o.status||'');
+    if (_resFilter === 'all') return true;
+    if (_resFilter === 'pending') return ['خارج','out','new','pending'].includes(s);
+    if (_resFilter === 'delivered') return ['تم التسليم','delivered'].includes(s);
+    if (_resFilter === 'cancelled') return ['ملغي','مرتجع','cancelled','returned'].includes(s);
+    return true;
+  });
+
+  // عكس الترتيب — الأحدث فوق
+  filtered = filtered.slice().reverse();
+
+  document.getElementById('res-counter').textContent =
+    'طلبات اليوم: ' + allToday.length + ' | معروض: ' + filtered.length;
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="res-empty">لا توجد طلبات تطابق الفلتر المحدد</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(o => {
+    const st = resStatusLabel(o.status);
+    const sc = resStatusClass(o.status);
+    const drvTime = (o.dlvtime||'').substring(11,16) || '-';
+    const dlvAt   = o.deliveredat || '-';
+    return `<div class="res-card ${sc}">
+      <div class="res-card-header">
+        <span class="res-order-id">${o.orderid||'-'}</span>
+        <span class="res-status-badge" style="background:${st.bg};color:${st.color}">${st.text}</span>
+        <span class="res-order-time">${to12hr((o.outtime||'').substring(11,16))}</span>
+      </div>
+      <div class="res-card-body">
+        <div class="res-field">
+          <div class="res-field-label">الزبون</div>
+          <div class="res-field-value">${o.custname||'-'}</div>
+        </div>
+        <div class="res-field">
+          <div class="res-field-label">الهاتف</div>
+          <div class="res-field-value">${o.phone||'-'}</div>
+        </div>
+        <div class="res-field">
+          <div class="res-field-label">المنطقة</div>
+          <div class="res-field-value">${o.area||'-'}</div>
+        </div>
+        <div class="res-field">
+          <div class="res-field-label">السائق</div>
+          <div class="res-field-value">${o.driver||'-'}</div>
+        </div>
+        <div class="res-field">
+          <div class="res-field-label">وقت تسليم السائق</div>
+          <div class="res-field-value">${to12hr(drvTime)}</div>
+        </div>
+        <div class="res-field">
+          <div class="res-field-label">وقت استلام الزبون</div>
+          <div class="res-field-value">${to12hr(dlvAt)}</div>
+        </div>
+        <div class="res-field">
+          <div class="res-field-label">المبلغ</div>
+          <div class="res-field-value">${o.amount||'-'} د.ع</div>
+        </div>
+        ${o.notes ? `<div class="res-field" style="grid-column:1/-1">
+          <div class="res-field-label">ملاحظات</div>
+          <div class="res-field-value">${o.notes}</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadResOrders() {
+  try {
+    const r = await api({ action:'getOrdersReservations' });
+    if (!r || !r.orders) return;
+    const fresh = r.orders;
+
+    // ── إشعارات: طلب جديد ──
+    if (_resKnownOrders.size > 0) {
+      fresh.forEach(o => {
+        if (!_resKnownOrders.has(o.rowIndex)) {
+          sendNotif(
+            '📦 طلب جديد — الحجوزات',
+            'طلب ' + (o.orderid||'') + '\nالزبون: ' + (o.custname||'') + ' — ' + (o.area||''),
+            'res-new-' + o.rowIndex
+          );
+        }
+        // ── إشعارات: تم التسليم ──
+        if (['تم التسليم','delivered'].includes(String(o.status)) && !_resKnownDelivered.has(o.rowIndex)) {
+          const old = _resOrders.find(x => x.rowIndex === o.rowIndex);
+          if (!old || !['تم التسليم','delivered'].includes(String(old.status))) {
+            sendNotif(
+              '✅ تم التسليم',
+              (o.driver||'السائق') + ' سلّم طلب ' + (o.orderid||'') + '\nالزبون: ' + (o.custname||'') + ' — ' + (o.area||''),
+              'res-done-' + o.rowIndex
+            );
+          }
+        }
+      });
+    }
+
+    // سجّل الكل كمعروف
+    fresh.forEach(o => {
+      _resKnownOrders.add(o.rowIndex);
+      if (['تم التسليم','delivered'].includes(String(o.status))) _resKnownDelivered.add(o.rowIndex);
+    });
+
+    _resOrders = fresh;
+    renderResOrders();
+  } catch(e) {
+    console.log('res orders error', e);
+  }
+}
+
+function startResPolling() {
+  // أول تحميل — سجّل الكل كمعروف بدون إشعار
+  (async () => {
+    try {
+      const r = await api({ action:'getOrdersReservations' });
+      if (r && r.orders) {
+        r.orders.forEach(o => {
+          _resKnownOrders.add(o.rowIndex);
+          if (['تم التسليم','delivered'].includes(String(o.status))) _resKnownDelivered.add(o.rowIndex);
+        });
+        _resOrders = r.orders;
+        renderResOrders();
+      }
+    } catch(e) {}
+  })();
+  // polling كل 10 ثواني (نفس السرعة مثل المدير والموظف)
+  _resPollingTimer = setInterval(loadResOrders, 10000);
+  // clock
+  setInterval(() => {
+    const el = document.getElementById('res-time');
+    if (el) {
+      const n = new Date();
+      el.textContent = n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+    }
+  }, 1000);
+  // ticker
+  (function initResTicker() {
+    const inner = document.getElementById('res-ticker');
+    if (!inner) return;
+    inner.innerHTML = inner.innerHTML + inner.innerHTML;
+    let speed = 70, pos = 0, paused = false, halfW = 0, last = null;
+    inner.addEventListener('mouseenter', () => paused = true);
+    inner.addEventListener('mouseleave', () => paused = false);
+    function step(ts) {
+      if (!halfW) halfW = inner.scrollWidth / 2;
+      if (last === null) last = ts;
+      const dt = (ts - last) / 1000; last = ts;
+      if (!paused) { pos += speed * dt; if (pos >= halfW) pos = 0; inner.style.transform = 'translateX(' + pos + 'px)'; }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  })();
+}
+
+function stopResPolling() {
+  if (_resPollingTimer) { clearInterval(_resPollingTimer); _resPollingTimer = null; }
+  _resKnownOrders.clear();
+  _resKnownDelivered.clear();
+}
+</script>
 
 </body>
 </html>
