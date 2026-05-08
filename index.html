@@ -1117,7 +1117,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.22 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.24 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1325,7 +1325,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.22</span>
+      <span class="ver-badge-topbar">v1.24</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1485,7 +1485,7 @@ tr:hover td{background:var(--gray-50)}
                 <div id="zone-display" class="zone-badge" style="display:none"></div>
               </div>
               <div class="fg">
-                <label class="fl">سعر التوصيل</label>
+                <label class="fl">سعر التوصيل <span id="e-delivery-lock-badge" style="display:none;background:#e5e3de;color:#6e6960;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;margin-right:4px;letter-spacing:.3px">🔒 للقراءة فقط</span></label>
                 <div id="delivery-price" class="delivery-price-display"></div>
                 <input type="number" id="e-delivery" placeholder="0" oninput="updateTotal()">
               </div>
@@ -1657,7 +1657,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.22</span>
+      <span class="ver-badge-topbar">v1.24</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2537,6 +2537,11 @@ async function doLogin() {
       saveRememberMe('employee', document.getElementById('emp-user') ? document.getElementById('emp-user').value : '', pVal);
     } else { clearRememberMe(); }
     showScreen('employee');
+    // 🔒 قفل حقل سعر التوصيل للموظف — للقراءة فقط
+    const eDel = document.getElementById('e-delivery');
+    eDel.readOnly = true;
+    eDel.style.cssText += ';background:#f2f1ee!important;color:#9e9990!important;cursor:not-allowed!important;pointer-events:none';
+    document.getElementById('e-delivery-lock-badge').style.display = 'inline';
     document.getElementById('emp-name-badge').textContent  = '👤 ' + user.name;
     document.getElementById('emp-topbar-name').textContent = '👤 ' + user.name + ' · قسم الديليفري';
     switchEmpTab('form', document.getElementById('emp-tab-btn-form'));
@@ -2703,8 +2708,8 @@ function onAreaChange() {
 }
 function updateTotal() {
   const amt = parseFloat(document.getElementById('e-amount').value) || 0;
-  const del = parseFloat(document.getElementById('e-delivery').value) || 0;
-  document.getElementById('e-total').textContent = (amt + del).toLocaleString('en-US') + ' د.ع';
+  // المجموع الكلي = مبلغ الفاتورة فقط — سعر التوصيل يُحفظ منفصلاً ولا يُضاف للمجموع
+  document.getElementById('e-total').textContent = amt.toLocaleString('en-US') + ' د.ع';
 }
 
 // ══════════════════════════════════════
@@ -2771,7 +2776,7 @@ async function submitOrder() {
   }
   const areaObj  = areasData.find(a=>a.name===area)||{};
   const delivery = parseFloat(document.getElementById('e-delivery').value)||0;
-  const total    = (parseFloat(amount)||0) + delivery;
+  const total    = parseFloat(amount)||0;  // المجموع = مبلغ الفاتورة فقط بدون التوصيل
   const btn = document.getElementById('submit-btn');
   btn.disabled=true; btn.textContent='جاري الحفظ...';
   try {
@@ -2795,7 +2800,7 @@ async function submitOrder() {
       invoice: document.getElementById('e-invoice').value.trim(),
       amount: parseFloat(amount)||0,
       delivery: parseFloat(document.getElementById('e-delivery').value)||0,
-      total,
+      total: parseFloat(amount)||0,  // بدون التوصيل
       area, zone: areaObj.zone||'', incentive: areaObj.incentive||0,
       address: document.getElementById('e-address').value.trim(),
       driver: '', outTime,
@@ -3610,6 +3615,22 @@ function printDriverDetailReport() {
 //  CHANGELOG
 // ══════════════════════════════════════
 const CHANGELOG = [
+  {
+    version: 'v1.24',
+    date: '2026-05-08',
+    changes: [
+      'fix(form): حقل سعر التوصيل أصبح للقراءة فقط عند الموظف — لا يمكن تعديله، المدير فقط يستطيع ذلك',
+      'fix(total): المجموع الكلي للطلب لا يحتسب سعر التوصيل — يعرض مبلغ الفاتورة فقط',
+    ]
+  },
+  {
+    version: 'v1.23',
+    date: '2026-05-08',
+    changes: [
+      'feat(history): إضافة عمود الموظف في سجل الطلبات — يظهر اسم الموظف الذي سجّل الطلب',
+      'fix(history): إصلاح إغلاق تفاصيل الطلب تلقائياً عند تحديث الـ polling — الصف يبقى مفتوحاً',
+    ]
+  },
   {
     version: 'v1.22',
     date: '2026-05-07',
@@ -4638,6 +4659,7 @@ function renderHistoryOrders() {
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">📅 التاريخ</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800">الزبون</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المنطقة</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">👤 الموظف</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">🕐 وقت التوصيل</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">المجموع</th>
           <th style="padding:10px 12px;text-align:right;font-weight:800;white-space:nowrap">الحالة</th>
@@ -4654,11 +4676,14 @@ function renderHistoryOrders() {
           <tr style="border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .15s"
             onmouseover="this.style.background='var(--gray-50)'"
             onmouseout="this.style.background=''"
-            onclick="toggleHistRow('hr-${i}',this)">
+            onclick="toggleHistRow('hr-${i}',this,'${o.orderNum||''}')">
             <td style="padding:10px 12px;font-family:monospace;font-weight:800;font-size:12px;color:var(--accent);white-space:nowrap">${o.orderNum||'—'}</td>
             <td style="padding:10px 12px;font-size:12px;color:var(--gray-600);white-space:nowrap;font-weight:700">${o.date||'—'}</td>
             <td style="padding:10px 12px;font-weight:700;color:var(--gray-800)">${o.customer||'—'}<br><span style="font-size:11px;color:var(--gray-400);font-weight:500">${o.phone||''}</span></td>
             <td style="padding:10px 12px;font-weight:600;color:var(--gray-600);white-space:nowrap">${o.area||'—'}</td>
+            <td style="padding:10px 12px;white-space:nowrap">
+              ${o.employee ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--accent-lt);color:var(--accent-dk);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:800">👤 ${o.employee}</span>` : '<span style="color:var(--gray-300);font-size:12px">—</span>'}
+            </td>
             <td style="padding:10px 12px;font-size:12px;white-space:nowrap;font-weight:800;color:${o.outTime ? 'var(--accent-dk)' : 'var(--gray-400)'}">${o.outTime ? '🕐 ' + fmtTime(o.outTime) : '—'}</td>
             <td style="padding:10px 12px;font-weight:800;color:var(--gray-800);white-space:nowrap">${Number(o.total||0).toLocaleString('en-US')} د.ع</td>
             <td style="padding:10px 12px">
@@ -4678,7 +4703,7 @@ function renderHistoryOrders() {
             </td>
           </tr>
           <tr id="hr-${i}" style="display:none;background:var(--gray-50)">
-            <td colspan="8" style="padding:12px 16px">
+            <td colspan="9" style="padding:12px 16px">
               ${isLocked ? `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-lt);color:var(--accent);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">🔒 مقفول — سُلِّم للسائق</div>` : `<div style="display:inline-flex;align-items:center;gap:5px;background:#fff7ed;color:#b45309;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-bottom:10px">⏳ بانتظار تسليم للسائق</div>`}
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
                 ${o.driver   ? `<div><span style="font-size:10px;color:var(--gray-400);font-weight:700">🚗 السائق</span><br><span style="font-size:13px;font-weight:800">${o.driver}</span></div>` : ''}
@@ -4720,14 +4745,33 @@ function renderHistoryOrders() {
       </tbody>
     </table>
   </div>`;
+
+  // أعِد فتح الصف الذي كان مفتوحاً قبل إعادة الرسم (لمنع الإغلاق التلقائي)
+  if (_histOpenOrderNum) {
+    const newIdx = filtered.findIndex(o => o.orderNum === _histOpenOrderNum);
+    if (newIdx !== -1) {
+      const detailRow = document.getElementById('hr-' + newIdx);
+      const mainRow = detailRow?.previousElementSibling;
+      if (detailRow) {
+        detailRow.style.display = 'table-row';
+        if (mainRow) mainRow.style.background = 'var(--accent-lt)';
+        _histOpenIndex = 'hr-' + newIdx;
+      }
+    }
+  }
 }
 
-function toggleHistRow(id, row) {
+let _histOpenIndex = null; // نحفظ رقم الصف المفتوح (بالـ index i)
+let _histOpenOrderNum = null; // نحفظ رقم الطلب للحفاظ عليه بعد إعادة الرسم
+
+function toggleHistRow(id, row, orderNum) {
   const el = document.getElementById(id);
   if (!el) return;
   const isOpen = el.style.display !== 'none';
   el.style.display = isOpen ? 'none' : 'table-row';
   row.style.background = isOpen ? '' : 'var(--accent-lt)';
+  _histOpenIndex = isOpen ? null : id;
+  _histOpenOrderNum = isOpen ? null : (orderNum || null);
 }
 
 async function empCancelOrder(rowIndex, orderNum, btn) {
@@ -6125,33 +6169,34 @@ function buildFinancialReport() {
     if(!byDate[o.date]) byDate[o.date]={date:o.date,count:0,revenue:0,delivery:0,incentive:0,total:0};
     byDate[o.date].count++; byDate[o.date].revenue+=(o.amount||0);
     byDate[o.date].delivery+=(o.delivery||0); byDate[o.date].incentive+=(o.incentive||0);
-    byDate[o.date].total+=(o.total||0);
+    byDate[o.date].total+=((o.amount||0)+(o.delivery||0));
   });
   const days=Object.values(byDate).sort((a,b)=>a.date.localeCompare(b.date));
   const totRev=days.reduce((s,d)=>s+d.revenue,0), totDel=days.reduce((s,d)=>s+d.delivery,0);
-  const totInc=days.reduce((s,d)=>s+d.incentive,0), totAll=days.reduce((s,d)=>s+d.total,0);
+  const totInc=days.reduce((s,d)=>s+d.incentive,0);
+  const totNet=totRev-totDel;
   setKPIs([
-    {label:'إجمالي الإيرادات',val:Number(totRev).toLocaleString('en-US')+' د.ع',color:'var(--success)'},
+    {label:'إجمالي الإيرادات',val:Number(totNet).toLocaleString('en-US')+' د.ع',color:'var(--success)'},
     {label:'رسوم التوصيل',val:Number(totDel).toLocaleString('en-US')+' د.ع',color:'var(--accent)'},
     {label:'إجمالي الحوافز',val:Number(totInc).toLocaleString('en-US')+' د.ع',color:'var(--gold)'},
-    {label:'المجموع الكلي',val:Number(totAll).toLocaleString('en-US')+' د.ع',color:'var(--danger)'},
+    {label:'المجموع الكلي',val:Number(totRev).toLocaleString('en-US')+' د.ع',color:'var(--danger)'},
   ]);
   document.getElementById('rep-thead').innerHTML=`<tr>
     <th>التاريخ</th><th>عدد الطلبات</th><th>إيرادات الفواتير</th>
-    <th>رسوم التوصيل</th><th>الحوافز</th><th>المجموع</th></tr>`;
+    <th>رسوم التوصيل</th><th>صافي الإيرادات</th><th>الحوافز</th></tr>`;
   document.getElementById('rep-tbody').innerHTML=[
     ...days.map(d=>`<tr>
       <td style="font-weight:700">${d.date}</td><td>${d.count}</td>
       <td>${Number(d.revenue).toLocaleString('en-US')} د.ع</td>
       <td>${Number(d.delivery).toLocaleString('en-US')} د.ع</td>
-      <td style="color:var(--gold)">${Number(d.incentive).toLocaleString('en-US')} د.ع</td>
-      <td style="font-weight:800;color:var(--accent)">${Number(d.total).toLocaleString('en-US')} د.ع</td></tr>`),
+      <td style="font-weight:800;color:var(--success)">${Number(d.revenue-d.delivery).toLocaleString('en-US')} د.ع</td>
+      <td style="color:var(--gold)">${Number(d.incentive).toLocaleString('en-US')} د.ع</td></tr>`),
     `<tr style="background:var(--gray-100);font-weight:900;border-top:2px solid var(--gray-300)">
       <td>الإجمالي</td><td>${repData.length}</td>
-      <td style="color:var(--success)">${Number(totRev).toLocaleString('en-US')} د.ع</td>
+      <td style="color:var(--danger)">${Number(totRev).toLocaleString('en-US')} د.ع</td>
       <td style="color:var(--accent)">${Number(totDel).toLocaleString('en-US')} د.ع</td>
-      <td style="color:var(--gold)">${Number(totInc).toLocaleString('en-US')} د.ع</td>
-      <td style="color:var(--danger)">${Number(totAll).toLocaleString('en-US')} د.ع</td></tr>`
+      <td style="color:var(--success)">${Number(totNet).toLocaleString('en-US')} د.ع</td>
+      <td style="color:var(--gold)">${Number(totInc).toLocaleString('en-US')} د.ع</td></tr>`
   ].join('')||'<tr><td colspan="6" class="empty-td">لا بيانات</td></tr>';
 }
 
