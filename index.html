@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="مخابز سومر">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#252220">
-<link id="pwa-manifest" rel="manifest">
+<link id="pwa-manifest" rel="manifest" href="./manifest.json">
 
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Inter:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -1417,7 +1417,7 @@ tr:hover td{background:var(--gray-50)}
         <span class="ticker-sep">◆</span>
         <span class="ticker-item"><span class="t-icon">📍</span> اختر المنطقة الصحيحة — تؤثر مباشرة على حافز السائق</span>
         <span class="ticker-sep">◆</span>
-        <span class="ticker-item"><span class="t-icon">💰</span> تحقق من مبلغ الفاتورة قبل تسجيل الطلب</span>
+        <span class="ticker-item"><span class="t-icon">💰</span> تحقق من المبلغ النهائي للفاتورة قبل تسجيل الطلب</span>
         <span class="ticker-sep">◆</span>
         <span class="ticker-item"><span class="t-icon">🚗</span> تأكد من اختيار السائق الصحيح</span>
         <span class="ticker-sep">◆</span>
@@ -1455,7 +1455,7 @@ tr:hover td{background:var(--gray-50)}
           <!-- بيانات الزبون -->
           <div class="fcard">
             <div class="fcard-title">👤 بيانات الزبون</div>
-            <div class="frow cols4">
+            <div class="frow cols3">
               <div class="fg">
                 <label class="fl">اسم الزبون *</label>
                 <input type="text" id="e-customer" placeholder="اسم الزبون">
@@ -1468,9 +1468,10 @@ tr:hover td{background:var(--gray-50)}
                 <label class="fl">رقم الفاتورة</label>
                 <input type="text" id="e-invoice" placeholder="رقم الفاتورة">
               </div>
-              <div class="fg">
-                <label class="fl">مبلغ الفاتورة *</label>
+              <div class="fg full">
+                <label class="fl">المبلغ النهائي للفاتورة *</label>
                 <input type="number" id="e-amount" placeholder="0.000" oninput="updateTotal()">
+                <div style="margin-top:5px;font-size:11px;color:#e67e22;font-weight:600">⚠️ أدخل المبلغ الصافي بعد الخصم إن وجد</div>
               </div>
             </div>
           </div>
@@ -1521,9 +1522,21 @@ tr:hover td{background:var(--gray-50)}
                 </div>
                 <input type="hidden" id="e-outtime">
               </div>
-              <div class="fg">
+              <div class="fg full">
                 <label class="fl">تفاصيل الطلب *</label>
-                <textarea id="e-items" placeholder="المنتجات والكميات" rows="3" style="resize:vertical;min-height:72px;font-family:var(--font);font-size:13px;line-height:1.6;word-break:break-word"></textarea>
+                <input type="hidden" id="e-items">
+                <div id="items-builder" style="border:1px solid var(--gray-200);border-radius:var(--r-sm);overflow:hidden;background:#fff">
+                  <!-- header -->
+                  <div style="display:grid;grid-template-columns:1fr 80px 36px;gap:0;background:var(--gray-100);padding:6px 10px;font-size:11px;font-weight:700;color:var(--gray-500);border-bottom:1px solid var(--gray-200)">
+                    <span>المنتج</span><span style="text-align:center">الكمية</span><span></span>
+                  </div>
+                  <!-- rows -->
+                  <div id="items-rows" style="padding:6px 8px;display:flex;flex-direction:column;gap:5px"></div>
+                  <!-- add button -->
+                  <div style="padding:6px 8px;border-top:1px solid var(--gray-200)">
+                    <button type="button" onclick="itemsAddRow()" style="width:100%;background:none;border:1px dashed var(--accent-md);border-radius:var(--r-sm);padding:5px;font-size:12px;color:var(--accent-dk);cursor:pointer;font-family:var(--font)">+ إضافة منتج</button>
+                  </div>
+                </div>
               </div>
               <div class="fg full">
                 <label class="fl">📝 ملاحظات إضافية</label>
@@ -1586,12 +1599,13 @@ tr:hover td{background:var(--gray-50)}
             <input type="text" id="dc-receipt" placeholder="رقم وصل الشركة">
           </div>
           <div class="fg">
-            <label class="fl">اسم الزبون *</label>
-            <input type="text" id="dc-customer" placeholder="اسم الزبون">
+            <label class="fl">اسم السائق *</label>
+            <input type="text" id="dc-customer" placeholder="اسم السائق">
           </div>
-          <div class="fg">
-            <label class="fl">مبلغ الفاتورة *</label>
+          <div class="fg" style="grid-column:1/-1">
+            <label class="fl">المبلغ النهائي للفاتورة *</label>
             <input type="number" id="dc-amount" placeholder="0.000">
+            <div style="margin-top:5px;font-size:11px;color:#e67e22;font-weight:600">⚠️ أدخل المبلغ الصافي بعد الخصم إن وجد</div>
           </div>
           <div class="fg">
             <label class="fl">⏰ وقت استلام سائق الشركة</label>
@@ -2763,6 +2777,44 @@ function fillSelect(id, items) {
   const sel = document.getElementById(id);
   sel.innerHTML = '<option value="">-- اختر --</option>' + items.map(i=>`<option>${i}</option>`).join('');
 }
+
+  /* ===== ITEMS BUILDER ===== */
+  function itemsAddRow(name='', qty='') {
+    const container = document.getElementById('items-rows');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 36px;gap:5px;align-items:center';
+    row.innerHTML = `
+      <input type="text" placeholder="اسم المنتج" oninput="itemsSync()" value="${name}"
+        style="padding:5px 8px;border:1px solid var(--gray-200);border-radius:var(--r-sm);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box">
+      <input type="number" placeholder="0" min="0" oninput="itemsSync()" value="${qty}"
+        style="padding:5px 6px;border:1px solid var(--gray-200);border-radius:var(--r-sm);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;text-align:center">
+      <button type="button" onclick="this.closest('div').remove();itemsSync()"
+        style="width:30px;height:30px;background:#fff0f0;border:1px solid #fcc;border-radius:var(--r-sm);color:#c0392b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#215;</button>`;
+    container.appendChild(row);
+    row.querySelector('input').focus();
+    itemsSync();
+  }
+
+  function itemsSync() {
+    const rows = document.querySelectorAll('#items-rows > div');
+    const lines = [];
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const name = inputs[0].value.trim();
+      const qty  = inputs[1].value.trim();
+      if (name || qty) lines.push(qty ? name + ' × ' + qty : name);
+    });
+    document.getElementById('e-items').value = lines.join('\n');
+  }
+
+  function itemsClear() {
+    document.getElementById('items-rows').innerHTML = '';
+    document.getElementById('e-items').value = '';
+    // add one empty row by default
+    itemsAddRow();
+  }
+
+
 async function submitOrder() {
   const orderNum  = document.getElementById('e-order-display').textContent;
   const customer  = document.getElementById('e-customer').value.trim();
@@ -2818,7 +2870,8 @@ async function submitOrder() {
   btn.disabled=false; btn.textContent='✅ تسجيل الطلب';
 }
 function clearEmpForm() {
-  ['e-customer','e-phone','e-invoice','e-amount','e-address','e-items','e-notes','e-delivery'].forEach(id=>document.getElementById(id).value='');
+  ['e-customer','e-phone','e-invoice','e-amount','e-address','e-notes','e-delivery'].forEach(id=>document.getElementById(id).value='');
+    itemsClear();
   document.getElementById('e-area').value='';
   document.getElementById('e-driver').value='';
   document.getElementById('e-drivertime').value='';
@@ -2860,8 +2913,8 @@ async function submitDeliveryOrder() {
 
   if (!company)  { document.getElementById('dc-company-err').style.display='block'; return; }
   if (!receipt)  { alert('يرجى إدخال رقم الوصل'); return; }
-  if (!customer) { alert('يرجى إدخال اسم الزبون'); return; }
-  if (!amount)   { alert('يرجى إدخال مبلغ الفاتورة'); return; }
+  if (!customer) { alert('يرجى إدخال اسم السائق'); return; }
+  if (!amount)   { alert('يرجى إدخال المبلغ النهائي للفاتورة'); return; }
 
   const orderNum = genDeliveryOrderId();
   const now  = new Date();
@@ -5059,6 +5112,8 @@ function histRowFull(label, val) {
   </div>`;
 }
 
+
+  document.addEventListener("DOMContentLoaded",()=>{ if(document.getElementById("items-rows")) itemsAddRow(); });
 </script>
 
 <!-- ═══════ DRIVER ═══════ -->
@@ -5161,7 +5216,7 @@ function histRowFull(label, val) {
         <div><label class="fl">اسم الزبون</label><input id="om-customer" type="text"></div>
         <div><label class="fl">رقم الهاتف</label><input id="om-phone" type="tel"></div>
         <div><label class="fl">رقم الفاتورة</label><input id="om-invoice" type="text"></div>
-        <div><label class="fl">مبلغ الفاتورة</label><input id="om-amount" type="number" oninput="omUpdateTotal()"></div>
+        <div><label class="fl">المبلغ النهائي للفاتورة</label><input id="om-amount" type="number" oninput="omUpdateTotal()"></div>
         <div><label class="fl">المنطقة</label>
           <select id="om-area" onchange="omAreaChange()">
             <option value="">-- اختر --</option>
@@ -5244,7 +5299,7 @@ function showSubmitConfirm() {
     row('📍','المنطقة',       area + (areaObj.zone ? ' — زون '+areaObj.zone : '')) +
     row('🕐','وقت التوصيل المطلوب',   document.getElementById('dtp-outtime-display').textContent) +
     row('🛍','تفاصيل الطلب',  items, true) +
-    row('💵','مبلغ الفاتورة', Number(amount).toLocaleString('en-US')+' د.ع') +
+    row('💵','المبلغ النهائي للفاتورة', Number(amount).toLocaleString('en-US')+' د.ع') +
     row('💳','المجموع الكلي', Number(total).toLocaleString('en-US')+' د.ع');
 
   document.getElementById('sc-emp-name').textContent = currentEmployee;
@@ -5736,7 +5791,7 @@ function openOrderModal(rowIndex) {
     row('👤 الزبون',        o.customer) +
     row('📞 الهاتف',        o.phone) +
     row('🧾 رقم الفاتورة',  o.invoice) +
-    row('💵 مبلغ الفاتورة', Number(o.amount||0).toLocaleString('en-US')+' د.ع') +
+    row('💵 المبلغ النهائي للفاتورة', Number(o.amount||0).toLocaleString('en-US')+' د.ع') +
     row('📍 المنطقة',       o.area+(o.zone?' — زون '+o.zone:'')) +
     row('🚚 سعر التوصيل',   Number(o.delivery||0).toLocaleString('en-US')+' د.ع') +
     row('🚗 السائق',        o.driver) +
@@ -6071,7 +6126,7 @@ function buildOrdersReport() {
   document.getElementById('rep-thead').innerHTML=`<tr>
     <th>#</th><th>رقم الطلب</th><th>التاريخ</th><th>الزبون</th><th>الهاتف</th>
     <th>المنطقة</th><th>الزون</th><th>السائق</th><th>الموظف</th>
-    <th>مبلغ الفاتورة</th><th>التوصيل</th><th>المجموع</th><th>الحالة</th><th>تفاصيل الطلب</th></tr>`;
+    <th>المبلغ النهائي للفاتورة</th><th>التوصيل</th><th>المجموع</th><th>الحالة</th><th>تفاصيل الطلب</th></tr>`;
   const SC={'خارج':'var(--warn)','تم التسليم':'var(--success)','ملغي':'var(--danger)'};
   document.getElementById('rep-tbody').innerHTML=repData.map((o,i)=>`
     <tr>
@@ -7893,24 +7948,21 @@ self.addEventListener('notificationclick', e => {
   const blob = new Blob([swCode], { type: 'application/javascript' });
   const swUrl = URL.createObjectURL(blob);
 
-  navigator.serviceWorker.register(swUrl, { scope: './' })
+  navigator.serviceWorker.register('./sw.js', { scope: './' })
     .then(reg => {
-      console.log('SW registered via blob:', reg.scope);
+      console.log('SW registered via file:', reg.scope);
       window._swReg = reg;
-      // تأكد من الـ activation
       if (reg.installing) {
         reg.installing.addEventListener('statechange', function() {
           if (this.state === 'activated') {
             window._swReg = reg;
-            // لو السائق مسجّل دخول — ابدأ SW polling فوراً بعد activation
             if (currentDriver) _startSwDriverPoll();
           }
         });
       }
     })
     .catch(e => {
-      console.warn('SW blob failed:', e);
-      _registerSWInline(swCode);
+      console.warn('SW file failed:', e);
     });
 
   // استقبال رسائل من SW (مثل اكتشاف طلب جديد)
