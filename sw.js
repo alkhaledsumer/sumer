@@ -48,10 +48,7 @@ async function _swPollDriver() {
       _sw_knownOrders.add(String(o.rowIndex));
       await _swNotif(
         '📦 طلب جديد!',
-        'طلب ' + (o.orderNum||'') + '
-الزبون: ' + (o.customer||'') + '
-المنطقة: ' + (o.area||'') + '
-' + Number(o.total||0).toLocaleString('en-US') + ' د.ع',
+        'طلب ' + (o.orderNum||'') + '\nالزبون: ' + (o.customer||'') + '\nالمنطقة: ' + (o.area||'') + '\n' + Number(o.total||0).toLocaleString('en-US') + ' د.ع',
         'drv-new-' + o.rowIndex
       );
     }
