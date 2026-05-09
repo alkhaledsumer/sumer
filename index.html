@@ -1117,7 +1117,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;opacity:.5;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:rgba(200,146,42,.6);font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.24 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.25 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1325,7 +1325,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.24</span>
+      <span class="ver-badge-topbar">v1.25</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1671,7 +1671,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.24</span>
+      <span class="ver-badge-topbar">v1.25</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -3668,6 +3668,17 @@ function printDriverDetailReport() {
 //  CHANGELOG
 // ══════════════════════════════════════
 const CHANGELOG = [
+  {
+    version: 'v1.25',
+    date: '2026-05-09',
+    changes: [
+      'feat(form): تغيير "مبلغ الفاتورة" إلى "المبلغ النهائي للفاتورة"',
+      'feat(form): إضافة ملاحظة المبلغ الصافي بعد الخصم',
+      'feat(delivery): تغيير "اسم الزبون" إلى "اسم السائق" في نموذج شركات التوصيل',
+      'feat(items): تحويل حقل تفاصيل الطلب إلى جدول بنود منظم',
+      'fix(sw): تسجيل Service Worker من ملف sw.js بدل blob URL',
+    ]
+  },
   {
     version: 'v1.24',
     date: '2026-05-08',
