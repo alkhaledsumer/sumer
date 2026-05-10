@@ -1238,7 +1238,7 @@ tr:hover td{background:var(--gray-50)}
 
       <!-- زر مخفي لفتح إعدادات الربط -->
       <div style="margin-top:1.5rem;text-align:center">
-        <span id="api-unlock-btn" onclick="unlockApiSetup()"
+        <span id="api-unlock-btn" style="display:none!important" onclick="unlockApiSetup()"
           style="display:inline-block;width:8px;height:8px;border-radius:50%;
                  background:rgba(150,140,120,.25);cursor:pointer;
                  transition:all .2s ease"
@@ -1246,7 +1246,7 @@ tr:hover td{background:var(--gray-50)}
       </div>
 
       <!-- modal كلمة سر الرابط — بديل prompt() لأن الآيفون يحجبه -->
-      <div id="api-pass-modal" style="display:none;margin-top:0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:14px 16px;backdrop-filter:blur(6px)">
+      <div id="api-pass-modal" style="display:none;visibility:hidden;margin-top:0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:14px 16px;backdrop-filter:blur(6px)">
         <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.75);margin-bottom:8px;text-align:center">🔒 أدخل كلمة السر</div>
         <div style="display:flex;gap:8px">
           <input type="password" id="api-pass-input" placeholder="كلمة السر"
@@ -1261,7 +1261,7 @@ tr:hover td{background:var(--gray-50)}
       </div>
 
       <!-- API setup - مخفي افتراضياً -->
-      <div class="api-setup" id="api-setup-box" style="margin-top:0.75rem;display:none">
+      <div class="api-setup" id="api-setup-box" style="margin-top:0.75rem;display:block">
         <strong>⚙️ ربط Google Sheets</strong>
         <div class="api-row">
           <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/.../exec"
