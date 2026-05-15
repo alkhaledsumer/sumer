@@ -3151,7 +3151,8 @@ function switchTab(name, btn) {
   if (name==='zones')      loadZonesMgmt();
   if (name==='incentives') { loadIncentivesTab(); }
   if (name==='users')      { loadUsers(); }
-  if (name==='driverreturns') { renderDriverReturnsLog('driver-returns-log-container'); }
+  if (name==='driverreturns') { startReturnsPollMgr(); }
+  else stopReturnsPollMgr();
   if (name==='driverperf') {
     const t = localDate(new Date()), f = new Date(); f.setDate(f.getDate()-30);
     if (!document.getElementById('dp-from').value) {
@@ -4814,9 +4815,10 @@ function switchEmpTab(name, btn) {
   } else if (name === 'returns') {
     if (returnsEl) {
       returnsEl.style.display = 'block';
-      renderDriverReturnsLog('emp-driver-returns-log-container');
+      startReturnsPollEmp();
     }
   } else {
+    stopReturnsPollEmp();
     historyEl.style.display = 'block';
     loadHistoryOrders();
   }
@@ -8679,44 +8681,94 @@ window.addEventListener('appinstalled', () => {
   ch.onmessage = function(e) {
     if (e.data && e.data.type === 'DRIVER_RETURNED') {
       const { driverName, timeStr, dateStr, mapLink } = e.data;
-      // حفظ في هذا التاب
-      saveDriverReturn({ driverName, timeStr, dateStr, mapLink, ts: Date.now() });
-      renderDriverReturnsLog('driver-returns-log-container');
-      renderDriverReturnsLog('emp-driver-returns-log-container');
+      // أضف للكاش فوراً (نفس الجهاز)
+      saveDriverReturnLocal({ driverName, timeStr, dateStr, mapLink, ts: Date.now() });
       // بانر + إشعار
       _showReturnBanner(driverName, timeStr, dateStr, mapLink);
       sendNotif(`🏠 ${driverName} — وصل الشركة`, `متوفر للتوصيل الآن\n⏰ ${timeStr} — ${dateStr}`, 'driver-return-' + Date.now());
+      // سحب من الشيت بعد ثانيتين (وقت كافي للكتابة)
+      setTimeout(() => loadDriverReturnsFromSheet(true), 2000);
     }
   };
   window._driverReturnChannel = ch;
 })();
 
 // ══════════════════════════════════════════════════════
-//  سجل رجوعات السائقين — حفظ وعرض ومسح
+//  سجل رجوعات السائقين — سحب من الشيت + عرض
 // ══════════════════════════════════════════════════════
-const RETURNS_KEY = 'driver_returns_log';
+let _returnsCache    = [];          // cache مشترك بين المدير والموظف
+let _returnsPollMgr  = null;        // interval المدير
+let _returnsPollEmp  = null;        // interval الموظف
+const RETURNS_POLL_MS = 20000;      // كل 20 ثانية
 
-function saveDriverReturn(entry) {
+// ── سحب البيانات من الشيت ──
+async function loadDriverReturnsFromSheet(silent = false) {
   try {
-    // أضف ID فريد إذا ما موجود
-    if (!entry.id) entry.id = entry.ts + '_' + Math.random().toString(36).slice(2,7);
-    const existing = JSON.parse(localStorage.getItem(RETURNS_KEY) || '[]');
-    // منع التكرار: تجاهل إذا نفس السائق في آخر 5 ثواني
-    const lastEntry = existing[0];
-    if (lastEntry && lastEntry.driverName === entry.driverName && (entry.ts - lastEntry.ts) < 5000) return;
-    existing.unshift(entry);
-    if (existing.length > 200) existing.splice(200);
-    localStorage.setItem(RETURNS_KEY, JSON.stringify(existing));
-  } catch(e) { console.warn('فشل حفظ سجل الرجوعات:', e); }
+    const today = localDate(new Date());
+    const from  = (() => { const d = new Date(); d.setDate(d.getDate()-30); return localDate(d); })();
+    const res   = await api({ action: 'getDriverReturns', password: managerPass, from, to: today });
+    if (res && res.success && Array.isArray(res.returns)) {
+      // حوّل صيغة الشيت لصيغة البطاقات
+      _returnsCache = res.returns.map(r => ({
+        driverName: r.driver,
+        timeStr:    r.time,
+        dateStr:    r.date,
+        mapLink:    r.mapLink || '',
+        ts:         new Date(r.date + 'T' + r.time).getTime() || 0
+      }));
+      renderDriverReturnsLog('driver-returns-log-container');
+      renderDriverReturnsLog('emp-driver-returns-log-container');
+    }
+  } catch(e) {
+    if (!silent) console.warn('فشل تحميل رجوعات السائقين:', e);
+  }
 }
 
+// ── بدء polling عند فتح تاب المدير ──
+function startReturnsPollMgr() {
+  loadDriverReturnsFromSheet(true);
+  if (_returnsPollMgr) return;
+  _returnsPollMgr = setInterval(() => loadDriverReturnsFromSheet(true), RETURNS_POLL_MS);
+}
+function stopReturnsPollMgr() {
+  if (_returnsPollMgr) { clearInterval(_returnsPollMgr); _returnsPollMgr = null; }
+}
+
+// ── بدء polling عند فتح تاب الموظف ──
+function startReturnsPollEmp() {
+  loadDriverReturnsFromSheet(true);
+  if (_returnsPollEmp) return;
+  _returnsPollEmp = setInterval(() => loadDriverReturnsFromSheet(true), RETURNS_POLL_MS);
+}
+function stopReturnsPollEmp() {
+  if (_returnsPollEmp) { clearInterval(_returnsPollEmp); _returnsPollEmp = null; }
+}
+
+// ── حفظ محلي مؤقت (للسائق نفسه فقط — حتى يظهر فوراً قبل ما يوصل الشيت) ──
+function saveDriverReturnLocal(entry) {
+  try {
+    // أضفه للكاش مؤقتاً
+    const exists = _returnsCache.some(r =>
+      r.driverName === entry.driverName && Math.abs((r.ts||0) - (entry.ts||0)) < 5000
+    );
+    if (!exists) {
+      _returnsCache.unshift(entry);
+      renderDriverReturnsLog('driver-returns-log-container');
+      renderDriverReturnsLog('emp-driver-returns-log-container');
+    }
+  } catch(e) {}
+}
+
+// ── alias للكود القديم ──
+function saveDriverReturn(entry) { saveDriverReturnLocal(entry); }
+
 function getDriverReturnsLog() {
-  try { return JSON.parse(localStorage.getItem(RETURNS_KEY) || '[]'); } catch { return []; }
+  return _returnsCache;
 }
 
 function clearDriverReturnsLog() {
-  if (!confirm('هل تريد مسح كامل سجل الرجوعات؟')) return;
-  localStorage.removeItem(RETURNS_KEY);
+  if (!confirm('هل تريد مسح عرض السجل المحلي؟\n(البيانات في Google Sheet تبقى محفوظة)')) return;
+  _returnsCache = [];
   renderDriverReturnsLog('driver-returns-log-container');
   renderDriverReturnsLog('emp-driver-returns-log-container');
 }
@@ -8854,15 +8906,13 @@ async function driverReturnedToBase() {
     await api({ action:'driverReturn', driver: currentDriver, time: now.toISOString(), lat, lng });
   } catch(e) { console.warn('فشل حفظ الحدث في الـ Sheet:', e); }
 
-  // ③ احفظ في السجل مباشرة (مرة واحدة فقط)
-  saveDriverReturn({ driverName: currentDriver, timeStr, dateStr, mapLink, ts: Date.now() });
-  renderDriverReturnsLog('driver-returns-log-container');
-  renderDriverReturnsLog('emp-driver-returns-log-container');
+  // ③ أضف للكاش فوراً (يظهر قبل ما يجي الـ poll)
+  saveDriverReturnLocal({ driverName: currentDriver, timeStr, dateStr, mapLink, ts: Date.now() });
 
   // ③-b بانر بصري على نفس التاب
   _showReturnBanner(currentDriver, timeStr, dateStr, mapLink);
 
-  // ③-c بث للتابات الأخرى فقط (بدون حفظ — هم يحفظون عندهم)
+  // ③-c بث للتابات الأخرى (نفس الجهاز/المتصفح)
   if (window._driverReturnChannel) {
     window._driverReturnChannel.postMessage({
       type: 'DRIVER_RETURNED',
@@ -8870,6 +8920,9 @@ async function driverReturnedToBase() {
       timeStr, dateStr, mapLink
     });
   }
+
+  // ③-d بعد ثانيتين: سحب من الشيت لتحديث كل الأجهزة
+  setTimeout(() => loadDriverReturnsFromSheet(true), 2000);
 
   // ④ رسالة نجاح للسائق
   const toast = document.getElementById('drv-toast');
