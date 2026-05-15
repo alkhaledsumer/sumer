@@ -8706,7 +8706,7 @@ async function loadDriverReturnsFromSheet(silent = false) {
   try {
     const today = localDate(new Date());
     const from  = (() => { const d = new Date(); d.setDate(d.getDate()-30); return localDate(d); })();
-    const res   = await api({ action: 'getDriverReturns', password: managerPass, from, to: today });
+    const res   = await api({ action: 'getDriverReturns', from, to: today });
     if (res && res.success && Array.isArray(res.returns)) {
       // حوّل صيغة الشيت لصيغة البطاقات
       _returnsCache = res.returns.map(r => ({
