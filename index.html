@@ -5423,7 +5423,6 @@ function histRowFull(label, val) {
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="drv-time">--:--</span>
       <button id="drv-notif-btn" class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.55);font-size:18px;padding:4px 8px;line-height:1;background:transparent;border-color:transparent" onclick="testNotifPermission()" title="حالة الإشعارات">🔔</button>
-      <button id="drv-return-btn" class="btn btn-sm" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-color:#15803d;font-weight:800;font-size:11px;display:flex;align-items:center;gap:4px;padding:5px 10px" onclick="driverReturnedToBase()">🏠 رجعت</button>
       <button class="btn btn-sm" style="background:var(--danger);color:#fff;border-color:var(--danger);font-weight:700" onclick="goLogin()">🚪 خروج</button>
     </div>
   </div>
@@ -8606,131 +8605,6 @@ window.addEventListener('appinstalled', () => {
   const b = document.getElementById('pwa-banner');
   if (b) b.remove();
 });
-
-// ══════════════════════════════════════════════════════
-//  دالة "رجعت للشركة" — إشعار + تسجيل للكل
-// ══════════════════════════════════════════════════════
-async function driverReturnedToBase() {
-  if (!currentDriver) { alert('لم يتم تسجيل الدخول كسائق'); return; }
-
-  // تأكيد من السائق
-  const confirmed = await new Promise(resolve => {
-    const ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1.25rem';
-    ov.innerHTML = `
-      <div style="background:#fff;border-radius:20px;width:100%;max-width:340px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3)">
-        <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:1.5rem 1.25rem 1rem;text-align:center">
-          <div style="font-size:48px;margin-bottom:8px">🏠</div>
-          <div style="font-size:16px;font-weight:900;color:#fff">رجوع للشركة</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:4px">سيتم إبلاغ جميع الأدوار</div>
-        </div>
-        <div style="padding:1.25rem">
-          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:.9rem;text-align:center;margin-bottom:1rem">
-            <div style="font-size:14px;font-weight:800;color:#166534">السائق: ${currentDriver}</div>
-            <div style="font-size:12px;color:#16a34a;margin-top:3px">متوفر للتوصيل الآن</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="this.closest('[data-ov]').resolve(true)" data-ov-confirm
-              style="flex:1;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:12px;font-family:Cairo,sans-serif;font-size:14px;font-weight:900;cursor:pointer">
-              ✅ نعم، رجعت
-            </button>
-            <button onclick="this.closest('[data-ov]').resolve(false)" data-ov-cancel
-              style="flex:1;background:#f1f5f9;color:#475569;border:none;border-radius:12px;padding:12px;font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
-              إلغاء
-            </button>
-          </div>
-        </div>
-      </div>`;
-    // نربط الـ resolve بالـ overlay نفسه
-    ov.setAttribute('data-ov','1');
-    ov.querySelector('[data-ov-confirm]').onclick = () => { ov.remove(); resolve(true); };
-    ov.querySelector('[data-ov-cancel]').onclick  = () => { ov.remove(); resolve(false); };
-    document.body.appendChild(ov);
-  });
-
-  if (!confirmed) return;
-
-  // جلب الوقت
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('ar-IQ', { hour:'2-digit', minute:'2-digit', hour12:true });
-  const dateStr = now.toLocaleDateString('ar-IQ', { weekday:'long', day:'numeric', month:'long' });
-
-  // جلب الموقع
-  let lat = '', lng = '', mapLink = '';
-  try {
-    const pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:8000, maximumAge:0 })
-    );
-    lat = pos.coords.latitude.toFixed(6);
-    lng = pos.coords.longitude.toFixed(6);
-    mapLink = `https://maps.google.com/?q=${lat},${lng}`;
-  } catch(e) {
-    console.warn('الموقع غير متاح');
-  }
-
-  const notifTitle  = `🏠 ${currentDriver} — وصل الشركة`;
-  const notifBody   = `متوفر للتوصيل الآن\n⏰ ${timeStr} — ${dateStr}` + (mapLink ? `\n📍 الموقع: ${lat}, ${lng}` : '');
-
-  // ① إشعار للمتصفح الحالي
-  sendNotif(notifTitle, notifBody, 'driver-return-' + Date.now());
-
-  // ② حفظ الحدث في Google Sheet عبر API
-  try {
-    await api({ action:'driverReturn', driver: currentDriver, time: now.toISOString(), lat, lng });
-  } catch(e) { console.warn('فشل حفظ الحدث في الـ Sheet:', e); }
-
-  // ③ إشعار بصري داخل التطبيق (للأدوار الأخرى التي تشاهد الشاشة)
-  _broadcastDriverReturn(currentDriver, timeStr, dateStr, mapLink);
-
-  // ④ رسالة نجاح للسائق
-  const toast = document.getElementById('drv-toast');
-  toast.textContent = '✅ تم إبلاغ الجميع — مرحباً بعودتك!';
-  toast.style.background = '#16a34a';
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display='none'; toast.textContent='✅ تم تسجيل التسليم!'; toast.style.background=''; }, 4000);
-}
-
-// بث الإشعار لشاشات المدير والموظف الظاهرة
-function _broadcastDriverReturn(driverName, timeStr, dateStr, mapLink) {
-  const banner = document.createElement('div');
-  banner.id = 'driver-return-banner-' + Date.now();
-  banner.style.cssText = `
-    position:fixed;top:0;left:0;right:0;z-index:88888;
-    background:linear-gradient(135deg,#15803d,#16a34a);
-    color:#fff;padding:0;
-    animation:slideDownBanner .4s cubic-bezier(.22,1,.36,1);
-    box-shadow:0 4px 20px rgba(0,0,0,.25);
-    font-family:Cairo,sans-serif;
-  `;
-  banner.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;max-width:700px;margin:0 auto">
-      <div style="font-size:30px;flex-shrink:0">🏠</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:900;margin-bottom:2px">${driverName} — وصل الشركة ✅</div>
-        <div style="font-size:12px;opacity:.85">⏰ ${timeStr} · ${dateStr} · متوفر للتوصيل الآن</div>
-        ${mapLink ? `<a href="${mapLink}" target="_blank" style="font-size:11px;color:#bbf7d0;font-weight:700;text-decoration:none">📍 عرض الموقع على الخريطة ↗</a>` : ''}
-      </div>
-      <button onclick="this.parentElement.parentElement.remove()"
-        style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 10px;font-family:Cairo,sans-serif;cursor:pointer;font-size:12px;flex-shrink:0">✕</button>
-    </div>`;
-
-  // أضف CSS للأنيميشن إذا ما موجود
-  if (!document.getElementById('driver-return-anim-css')) {
-    const style = document.createElement('style');
-    style.id = 'driver-return-anim-css';
-    style.textContent = `
-      @keyframes slideDownBanner {
-        from { transform:translateY(-100%); opacity:0; }
-        to   { transform:translateY(0);    opacity:1; }
-      }`;
-    document.head.appendChild(style);
-  }
-
-  document.body.appendChild(banner);
-  // اختفاء تلقائي بعد 12 ثانية
-  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 12000);
-}
-
 </script>
 
 <style>
