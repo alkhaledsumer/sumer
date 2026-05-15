@@ -2568,6 +2568,7 @@ async function doLogin() {
     setNowDatetime('e-outtime');
     requestNotifPermission();
     startEmpPolling();
+    startReturnsPollEmp();
     return;
   }
   // ── حجوزات ──
@@ -2649,13 +2650,14 @@ async function doLogin() {
       document.getElementById('m-from').value = _today;
       document.getElementById('m-to').value   = _today;
       loadOrders().then(() => startOrdersAutoRefresh());
+      startReturnsPollMgr();
     } else {
       document.getElementById('login-err').style.display = 'block';
     }
   } catch(e) { alert('تعذر الاتصال، تحقق من الرابط'); }
 }
 function goLogin() {
-  stopAllMgrPolling(); stopDriverPolling(); stopEmpPolling(); stopResPolling();
+  stopAllMgrPolling(); stopDriverPolling(); stopEmpPolling(); stopResPolling(); stopReturnsPollMgr(); stopReturnsPollEmp();
   showScreen('login'); mgrPassword=''; selectedRole=''; currentEmployee=''; currentDriver='';
   _mgrKnownOrders.clear(); _mgrKnownDelivered.clear();
   _empKnownStatuses = {};
@@ -3151,8 +3153,7 @@ function switchTab(name, btn) {
   if (name==='zones')      loadZonesMgmt();
   if (name==='incentives') { loadIncentivesTab(); }
   if (name==='users')      { loadUsers(); }
-  if (name==='driverreturns') { startReturnsPollMgr(); }
-  else stopReturnsPollMgr();
+  if (name==='driverreturns') { loadDriverReturnsFromSheet(false); }
   if (name==='driverperf') {
     const t = localDate(new Date()), f = new Date(); f.setDate(f.getDate()-30);
     if (!document.getElementById('dp-from').value) {
@@ -4815,10 +4816,9 @@ function switchEmpTab(name, btn) {
   } else if (name === 'returns') {
     if (returnsEl) {
       returnsEl.style.display = 'block';
-      startReturnsPollEmp();
+      loadDriverReturnsFromSheet(false);
     }
   } else {
-    stopReturnsPollEmp();
     historyEl.style.display = 'block';
     loadHistoryOrders();
   }
@@ -8708,7 +8708,6 @@ async function loadDriverReturnsFromSheet(silent = false) {
     const from  = (() => { const d = new Date(); d.setDate(d.getDate()-30); return localDate(d); })();
     const res   = await api({ action: 'getDriverReturns', from, to: today });
     if (res && res.success && Array.isArray(res.returns)) {
-      // حوّل صيغة الشيت لصيغة البطاقات
       _returnsCache = res.returns.map(r => ({
         driverName: r.driver,
         timeStr:    r.time,
@@ -8718,9 +8717,11 @@ async function loadDriverReturnsFromSheet(silent = false) {
       }));
       renderDriverReturnsLog('driver-returns-log-container');
       renderDriverReturnsLog('emp-driver-returns-log-container');
+    } else {
+      console.warn('getDriverReturns — رد غير متوقع:', res);
     }
   } catch(e) {
-    if (!silent) console.warn('فشل تحميل رجوعات السائقين:', e);
+    console.warn('فشل تحميل رجوعات السائقين:', e);
   }
 }
 
