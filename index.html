@@ -978,7 +978,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:#475569;font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.35 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.38 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1186,6 +1186,34 @@ tr:hover td{background:var(--gray-50)}
         <input type="number" id="ext-driver-amount" placeholder="0" min="0" style="width:100%;font-family:var(--font)">
       </div>
     </div>
+
+    <!-- ── نموذج السائق الخارجي الحر ── -->
+    <div id="freelance-driver-fields" style="display:none;border:1.5px solid #7c3aed;border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem;background:#faf5ff">
+      <div style="font-size:12px;font-weight:900;color:#7c3aed;margin-bottom:0.85rem">🚗 بيانات السائق الخارجي</div>
+      <div style="margin-bottom:0.75rem">
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">👤 اسم السائق *</label>
+        <input type="text" id="fl-driver-name" placeholder="اسم السائق الكامل" style="width:100%;font-family:var(--font)">
+      </div>
+      <div style="margin-bottom:0.75rem">
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">📞 رقم الهاتف *</label>
+        <input type="tel" id="fl-driver-phone" placeholder="07xxxxxxxxxx" style="width:100%;font-family:var(--font)">
+      </div>
+      <div style="margin-bottom:0.75rem;display:flex;gap:8px">
+        <div style="flex:1">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">🚙 نوع السيارة *</label>
+          <input type="text" id="fl-driver-car-type" placeholder="مثال: كيا سيراتو" style="width:100%;font-family:var(--font)">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">🔢 رقم السيارة *</label>
+          <input type="text" id="fl-driver-car-num" placeholder="مثال: ب م د 1234" style="width:100%;font-family:var(--font)">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:5px">📝 ملاحظة</label>
+        <input type="text" id="fl-driver-note" placeholder="أي ملاحظة إضافية (اختياري)" style="width:100%;font-family:var(--font)">
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px">
       <button onclick="closeAssignPopup()" class="btn" style="flex:1">إلغاء</button>
       <button onclick="confirmAssignDriver()" class="btn btn-primary" style="flex:2">✅ تسليم وقفل الطلب</button>
@@ -1202,7 +1230,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.35</span>
+      <span class="ver-badge-topbar">v1.38</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1569,7 +1597,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.35</span>
+      <span class="ver-badge-topbar">v1.38</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -3664,6 +3692,21 @@ function printDriverDetailReport() {
 // ══════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v1.38',
+    date: '2026-05-16',
+    changes: [
+      'fix(incentives): استثناء شركات التوصيل (BALY/TOTERS/TALABAT) والسواق الخارجيين (خارجي | ...) دائماً من تقرير الحوافز — لا يظهرون بغض النظر عن فلتر الشركة المختار',
+      'fix(incentives): تطبيق الاستثناء على تقرير الحوافز التفصيلي (buildIncentivesReport) وتبويب الحوافز (loadIncentivesTab) في نفس الوقت',
+      'feat(assign): السائق الخارجي يُسجَّل تلقائياً كـ "تم التسليم" فور حفظ البيانات — بدون خطوة تسليم يدوية',
+      'fix(assign): استدعاء driverDeliver تلقائي بعد assignDriver عند اختيار سائق خارجي أو سائق خارجي (إدخال يدوي)',
+      'feat(assign): إضافة خيار "سائق خارجي (إدخال يدوي)" في نافذة تسليم الطلب للسائق',
+      'feat(assign): نموذج بيانات السائق الخارجي يشمل: الاسم، الهاتف، نوع السيارة، رقم السيارة، وملاحظة',
+      'feat(assign): اسم السائق يُحفظ بصيغة: خارجي | الاسم | الهاتف | النوع الرقم | الملاحظة',
+      'fix(assign): تحقق من صحة الحقول المطلوبة (اسم، هاتف، نوع السيارة، رقم السيارة) قبل التأكيد',
+      'fix(assign): resetExternalDriverFields تُصفّر حقول السائق الخارجي الحر عند الإغلاق أو تغيير الاختيار',
+    ]
+  },
+  {
     version: 'v1.35',
     date: '2026-05-16',
     changes: [
@@ -4632,13 +4675,12 @@ async function loadIncentivesTab() {
       from:document.getElementById('i-from').value, to:document.getElementById('i-to').value });
     if (!incRes.success) { document.getElementById('inc-cards').innerHTML='<p style="color:var(--danger);font-size:13px">تعذر التحميل: '+incRes.msg+'</p>'; return; }
     allIncentives = incRes.incentives;
-    // ✅ فلترة الشركات على الحوافز
-    if (activeCompanyFilter !== 'ALL') {
-      if (activeCompanyFilter === 'NORMAL') {
-        allIncentives = allIncentives.filter(d => !DELIVERY_COMPANIES.some(c => String(d.name).toUpperCase().includes(c)));
-      } else {
-        allIncentives = allIncentives.filter(d => String(d.name).toUpperCase().includes(activeCompanyFilter));
-      }
+    // ✅ استثناء شركات التوصيل (BALY, TALABAT, TOTERS) والسواق الخارجيين دائماً من تقرير الحوافز
+    allIncentives = allIncentives.filter(d => !DELIVERY_COMPANIES.some(c => String(d.name).toUpperCase().includes(c)));
+    allIncentives = allIncentives.filter(d => !String(d.name).startsWith('خارجي'));
+    // ✅ فلترة إضافية لو المستخدم اختار شركة معينة
+    if (activeCompanyFilter !== 'ALL' && activeCompanyFilter !== 'NORMAL') {
+      allIncentives = allIncentives.filter(d => String(d.name).toUpperCase().includes(activeCompanyFilter));
     }
     if (!allIncentives.length) { document.getElementById('inc-cards').innerHTML='<p style="color:var(--gray-400);font-size:13px">لا توجد بيانات في هذه الفترة</p>'; return; }
     
@@ -5315,6 +5357,11 @@ async function openAssignPopup(orderNum, rowIndex) {
   const grp2 = document.createElement('optgroup');
   grp2.label = '🛵 سائق خارجي';
   EXTERNAL_DRIVER_NAMES.forEach(d => { const o = document.createElement('option'); o.value = '__ext__'+d; o.textContent = '🔗 '+d; grp2.appendChild(o); });
+  // خيار السائق الخارجي الحر
+  const oFl = document.createElement('option');
+  oFl.value = '__freelance__';
+  oFl.textContent = '🚗 سائق خارجي (إدخال يدوي)';
+  grp2.appendChild(oFl);
   sel.appendChild(grp2);
   resetExternalDriverFields();
   document.getElementById('assign-overlay').style.display = 'flex';
@@ -5344,12 +5391,17 @@ function _assignTimerStop() {
 function onAssignDriverChange() {
   const val = document.getElementById('assign-driver').value;
   const isExt = val.startsWith('__ext__');
-  document.getElementById('external-driver-fields').style.display = isExt ? 'block' : 'none';
+  const isFl  = val === '__freelance__';
+  document.getElementById('external-driver-fields').style.display  = isExt ? 'block' : 'none';
+  document.getElementById('freelance-driver-fields').style.display = isFl  ? 'block' : 'none';
   if (isExt) {
     ['ext-driver-name','ext-driver-phone','ext-driver-car','ext-driver-amount'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('ext-driver-id-preview').textContent = '📁 اضغط لرفع صورة الهوية';
     document.getElementById('ext-driver-id-thumb').style.display = 'none';
     document.getElementById('ext-driver-id-img').value = '';
+  }
+  if (isFl) {
+    ['fl-driver-name','fl-driver-phone','fl-driver-car-type','fl-driver-car-num','fl-driver-note'].forEach(id => document.getElementById(id).value = '');
   }
 }
 function previewExtDriverId(input) {
@@ -5359,11 +5411,13 @@ function previewExtDriverId(input) {
   reader.readAsDataURL(file);
 }
 function resetExternalDriverFields() {
-  document.getElementById('external-driver-fields').style.display = 'none';
+  document.getElementById('external-driver-fields').style.display  = 'none';
+  document.getElementById('freelance-driver-fields').style.display = 'none';
   ['ext-driver-name','ext-driver-phone','ext-driver-car','ext-driver-amount'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ext-driver-id-preview').textContent = '📁 اضغط لرفع صورة الهوية';
   document.getElementById('ext-driver-id-thumb').style.display = 'none';
   document.getElementById('ext-driver-id-img').value = '';
+  ['fl-driver-name','fl-driver-phone','fl-driver-car-type','fl-driver-car-num','fl-driver-note'].forEach(id => document.getElementById(id).value = '');
 }
 function closeAssignPopup() {
   _assignTimerStop();
@@ -5381,7 +5435,8 @@ async function confirmAssignDriver() {
   _assignTimerStop();
   if (!rawVal) { alert('اختر السائق'); return; }
   const isExt = rawVal.startsWith('__ext__');
-  let driver = isExt ? rawVal.replace('__ext__','') : rawVal;
+  const isFl  = rawVal === '__freelance__';
+  let driver = (isExt || isFl) ? rawVal.replace('__ext__','').replace('__freelance__','سائق خارجي') : rawVal;
   if (isExt) {
     const name=document.getElementById('ext-driver-name').value.trim();
     const phone=document.getElementById('ext-driver-phone').value.trim();
@@ -5393,6 +5448,19 @@ async function confirmAssignDriver() {
     if (!amount) { alert('أدخل المبلغ المعطى للسائق'); return; }
     driver = driver+' | '+name+' | '+phone+' | '+car+' | '+amount+' د.ع';
   }
+  if (isFl) {
+    const name    = document.getElementById('fl-driver-name').value.trim();
+    const phone   = document.getElementById('fl-driver-phone').value.trim();
+    const carType = document.getElementById('fl-driver-car-type').value.trim();
+    const carNum  = document.getElementById('fl-driver-car-num').value.trim();
+    const note    = document.getElementById('fl-driver-note').value.trim();
+    if (!name)    { alert('أدخل اسم السائق'); return; }
+    if (!phone)   { alert('أدخل رقم الهاتف'); return; }
+    if (!carType) { alert('أدخل نوع السيارة'); return; }
+    if (!carNum)  { alert('أدخل رقم السيارة'); return; }
+    driver = 'خارجي | '+name+' | '+phone+' | '+carType+' '+carNum+(note ? ' | '+note : '');
+  }
+  const isExternalDriver = isExt || isFl;
   const btn = document.querySelector('#assign-overlay .btn-primary');
   btn.disabled = true; btn.textContent = '⏳ جاري الحفظ...';
   try {
@@ -5402,6 +5470,15 @@ async function confirmAssignDriver() {
     if (o) { o.driver = driver; o.driverTime = time; }
     const s = sessionOrders.find(x => x.rowIndex === _assignRowIndex || x.orderNum === _assignOrderNum);
     if (s) { s.driver = driver; s.driverTime = time; }
+
+    // ── سائق خارجي: سجّل تم التسليم تلقائياً ──
+    if (isExternalDriver) {
+      btn.textContent = '⏳ تسجيل التسليم...';
+      await api({ action: 'driverDeliver', rowIndex: _assignRowIndex, status: 'تم التسليم', lat: '', lng: '', imageUrl: '' });
+      if (o) { o.status = 'تم التسليم'; o.deliveredAt = time; }
+      if (s) { s.status = 'تم التسليم'; s.deliveredAt = time; }
+    }
+
     btn.disabled = false; btn.textContent = '✅ تسليم وقفل الطلب';
     closeAssignPopup();
     renderHistoryOrders();
@@ -6479,6 +6556,9 @@ function buildIncentivesReport() {
   const dMap = {};
   repData.forEach(o => {
     if (!o.driver) return;
+    // ✅ استثناء شركات التوصيل (BALY, TALABAT, TOTERS) والسواق الخارجيين دائماً من تقرير الحوافز
+    if (DELIVERY_COMPANIES.some(c => String(o.driver).toUpperCase().includes(c))) return;
+    if (String(o.driver).startsWith('خارجي')) return;
     if (!dMap[o.driver]) dMap[o.driver] = {
       name: o.driver,
       areas: {},
@@ -7672,7 +7752,7 @@ async function drvDeliver(rowIndex, orderNum) {
       <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23c8922a' opacity='.15'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='32'%3E🍞%3C/text%3E%3C/svg%3E" alt="logo">
     </div>
     <h2 class="about-sys-name">نظام إدارة التوصيل</h2>
-    <p class="about-sys-ver">مخابز وحلويات سومر · الإصدار v1.35</p>
+    <p class="about-sys-ver">مخابز وحلويات سومر · الإصدار v1.38</p>
 
     <div class="about-divider"></div>
 
