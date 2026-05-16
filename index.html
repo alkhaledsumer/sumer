@@ -978,7 +978,7 @@ tr:hover td{background:var(--gray-50)}
       <div class="login-divider-v"></div>
       <p class="login-copy">© 2026 مخابز سومر — جميع الحقوق محفوظة</p>
       <p class="login-copy" style="margin-top:4px;font-size:9px;letter-spacing:.3px">تصميم وتطوير: <span style="color:#475569;font-weight:700">Ali Khaled</span></p>
-      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.34 · سومر ديليفري</span></div>
+      <div style="margin-top:10px;display:flex;justify-content:center"><span class="ver-badge">v1.35 · سومر ديليفري</span></div>
       <button class="about-btn" onclick="openAbout()">ℹ️ عن البرنامج</button>
     </div>
   </div>
@@ -1202,7 +1202,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub" id="emp-topbar-name">قسم الديليفري</div>
       </div>
-      <span class="ver-badge-topbar">v1.34</span>
+      <span class="ver-badge-topbar">v1.35</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-badge" id="emp-time">--:--</span>
@@ -1569,7 +1569,7 @@ tr:hover td{background:var(--gray-50)}
         <div class="topbar-title">مخابز وحلويات سومر</div>
         <div class="topbar-sub">لوحة المدير العام · مدير النظام</div>
       </div>
-      <span class="ver-badge-topbar">v1.34</span>
+      <span class="ver-badge-topbar">v1.35</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="topbar-badge" id="mgr-time">--:--</span>
@@ -2067,6 +2067,14 @@ tr:hover td{background:var(--gray-50)}
                 <option value="total-desc">المجموع (الأعلى أولاً)</option>
                 <option value="total-asc">المجموع (الأقل أولاً)</option>
               </select>
+            </div>
+            <div id="geo-exceptions-clear-wrap" style="display:none">
+              <button onclick="clearAllGeoExceptions()"
+                style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;font-size:12px;font-weight:700;
+                       background:#e8f5e9;color:#1e6840;border:1.5px solid #a7d7b0;border-radius:var(--r-sm);
+                       cursor:pointer;font-family:var(--font)">
+                🗑️ إلغاء كل الاستثناءات (<span id="geo-exceptions-count">0</span>)
+              </button>
             </div>
           </div>
           <div style="overflow-x:auto">
@@ -3655,6 +3663,18 @@ function printDriverDetailReport() {
 //  CHANGELOG
 // ══════════════════════════════════════
 const CHANGELOG = [
+  {
+    version: 'v1.35',
+    date: '2026-05-16',
+    changes: [
+      'feat(incentives): استثناء يدوي للطلبات "تسليم بدون موقع" — زر ⚠️ بجانب كل طلب بدون موقع في تقرير الحوافز يحوّله من "غير محتسب" إلى "محتسب"',
+      'feat(incentives): geoExceptions Set — يتتبع rowIndex الطلبات المستثناة ويعيد رسم التقرير فوراً عند كل تغيير',
+      'feat(incentives): زر "🗑️ إلغاء كل الاستثناءات" يظهر في شريط الفلترة فقط عند وجود استثناءات نشطة مع عداد',
+      'feat(incentives): صف ملخص أخضر ✅ في أسفل الجدول يعرض عدد الطلبات المستثناة المُدرجة في الحافز',
+      'feat(incentives): الاستثناءات تُصفَّر تلقائياً عند توليد تقرير جديد أو تغيير الفترة الزمنية',
+      'fix(incentives): عمود "إجمالي السائق" يعرض الفرق (محتسب + مستثنى) مع شارة خضراء للمستثنيات',
+    ]
+  },
   {
     version: 'v1.34',
     date: '2026-05-15',
@@ -6217,7 +6237,11 @@ function setModalMode(mode) {
     // اجيب السواق من السيرفر دايماً عند فتح المودال
     const driverSel = document.getElementById('om-driver');
     driverSel.innerHTML = '<option value="">⏳ جاري التحميل...</option>';
-    document.getElementById('om-status').value = o.status || 'خارج';
+    // ضبط الحالة — تأكد إن القيمة موجودة في الخيارات
+    const statusSel = document.getElementById('om-status');
+    const validStatuses = ['خارج','تم التسليم','ملغي'];
+    const currentStatus = o.status || 'خارج';
+    statusSel.value = validStatuses.includes(currentStatus) ? currentStatus : 'خارج';
     omUpdateTotal();
     // جيب السواق الطازجين من السيرفر
     api({ action: 'getDriversFromUsers' }).then(r => {
@@ -6258,36 +6282,65 @@ async function saveOrderEdit() {
   const o = currentModalOrder; if (!o) return;
   const amount   = parseFloat(document.getElementById('om-amount').value)||0;
   const delivery = parseFloat(document.getElementById('om-delivery').value)||0;
-  const area     = document.getElementById('om-area').value;
-  const aObj     = (window._areasCache||[]).find(x=>x.name===area)||{};
-  const btn      = document.querySelector('#om-edit .btn-primary');
+  const area     = document.getElementById('om-area').value.trim();
+  const driver   = document.getElementById('om-driver').value.trim();
+  const status   = document.getElementById('om-status').value;
+  const customer = document.getElementById('om-customer').value.trim();
+  const phone    = document.getElementById('om-phone').value.trim();
+  const invoice  = document.getElementById('om-invoice').value.trim();
+  const address  = document.getElementById('om-address').value.trim();
+  const items    = document.getElementById('om-items').value.trim();
+  const notes    = document.getElementById('om-notes').value.trim();
+  const outTime  = document.getElementById('om-outtime').value;
+  const driverTime = document.getElementById('om-drivertime').value;
+
+  // احسب الزون والحافز من المنطقة — لو تغيرت المنطقة خذ من الكاش، وإلا احتفظ بالقديم
+  const aObj = (window._areasCache||[]).find(x=>x.name===area)||{};
+  const zone      = area && aObj.zone      != null ? aObj.zone      : o.zone;
+  const incentive = area && aObj.incentive != null ? aObj.incentive : o.incentive;
+
+  const btn = document.querySelector('#om-edit .btn-primary');
   btn.disabled=true; btn.textContent='⏳ جاري الحفظ...';
   try {
-    await api({ action:'editOrder', password:mgrPassword, rowIndex:o.rowIndex,
-      customer:   document.getElementById('om-customer').value,
-      phone:      document.getElementById('om-phone').value,
-      invoice:    document.getElementById('om-invoice').value,
-      amount, delivery, total: amount+delivery, area,
-      zone:       aObj.zone||o.zone, incentive: aObj.incentive||o.incentive,
-      address:    document.getElementById('om-address').value,
-      driver:     document.getElementById('om-driver').value,
-      outTime:    document.getElementById('om-outtime').value,
-      driverTime: document.getElementById('om-drivertime').value,
-      items:      document.getElementById('om-items').value,
-      notes:      document.getElementById('om-notes').value,
-      status:     document.getElementById('om-status').value,
+    const r = await api({
+      action:'editOrder', password:mgrPassword, rowIndex:o.rowIndex,
+      customer, phone, invoice,
+      amount, delivery, total: amount+delivery,
+      area, zone, incentive,
+      address, driver,
+      outTime, driverTime,
+      items, notes, status,
     });
-    Object.assign(o, { customer:document.getElementById('om-customer').value,
-      phone:document.getElementById('om-phone').value, amount, delivery,
-      total:amount+delivery, area, zone:aObj.zone||o.zone, incentive:aObj.incentive||o.incentive,
-      address:document.getElementById('om-address').value,
-      driver:document.getElementById('om-driver').value,
-      items:document.getElementById('om-items').value,
-      notes:document.getElementById('om-notes').value,
-      status:document.getElementById('om-status').value });
-    renderOrders(); closeOrderModal();
-  } catch(e) { alert('فشل الحفظ — '+e.message); }
-  finally { btn.disabled=false; btn.textContent='💾 حفظ التعديل'; }
+
+    // تحقق من نجاح السيرفر
+    if (!r || r.success === false) {
+      throw new Error(r && r.msg ? r.msg : 'رفض السيرفر التعديل');
+    }
+
+    // حدّث الكائن المحلي بكل الحقول
+    Object.assign(o, {
+      customer, phone, invoice,
+      amount, delivery, total: amount+delivery,
+      area, zone, incentive,
+      address, driver,
+      outTime, driverTime,
+      items, notes, status,
+    });
+
+    renderOrders();
+    closeOrderModal();
+    // رسالة نجاح مؤقتة
+    const toast = document.createElement('div');
+    toast.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99999;background:var(--success);color:#fff;border-radius:var(--r);padding:10px 24px;font-size:13px;font-weight:700;box-shadow:var(--sh-lg);white-space:nowrap;animation:fadeIn .3s ease';
+    toast.textContent='✅ تم حفظ التعديل بنجاح';
+    document.body.appendChild(toast);
+    setTimeout(()=>toast.remove(), 2500);
+
+  } catch(e) {
+    alert('❌ فشل الحفظ — ' + e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='💾 حفظ التعديل';
+  }
 }
 
 async function confirmDeleteOrder() {
@@ -6312,6 +6365,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 //  REPORTS
 // ══════════════════════════════════════
 let repData = [], repType = '';
+// ── استثناءات "بدون موقع" — rowIndex للطلبات المستثناة يدوياً (تُحتسب في الحافز)
+let geoExceptions = new Set();
 
 function repSetRange(range) {
   const now=new Date(), today=localDate(now);
@@ -6355,6 +6410,9 @@ async function generateReport(type) {
     document.getElementById('rep-filters').style.display = (['incentives', 'drivers', 'customers'].includes(type)) ? 'flex' : 'none';
     document.getElementById('rep-search').value = '';
     document.getElementById('rep-sort').value = 'default';
+    // مسح الاستثناءات عند توليد تقرير جديد
+    geoExceptions.clear();
+    updateGeoExceptionsUI();
     
     switch(type){
       case 'incentives': buildIncentivesReport(); break;
@@ -6384,6 +6442,36 @@ function applyReportFilters() {
   }
 }
 
+// ── تبديل استثناء طلب بدون موقع (يُحتسب / لا يُحتسب)
+function toggleGeoException(rowIndex) {
+  if (geoExceptions.has(rowIndex)) {
+    geoExceptions.delete(rowIndex);
+  } else {
+    geoExceptions.add(rowIndex);
+  }
+  updateGeoExceptionsUI();
+  buildIncentivesReport(); // إعادة رسم التقرير
+}
+
+function clearAllGeoExceptions() {
+  geoExceptions.clear();
+  updateGeoExceptionsUI();
+  buildIncentivesReport();
+}
+
+function updateGeoExceptionsUI() {
+  const wrap  = document.getElementById('geo-exceptions-clear-wrap');
+  const count = document.getElementById('geo-exceptions-count');
+  if (!wrap || !count) return;
+  if (geoExceptions.size > 0) {
+    wrap.style.display = '';
+    count.textContent  = geoExceptions.size;
+  } else {
+    wrap.style.display = 'none';
+    count.textContent  = '0';
+  }
+}
+
 function buildIncentivesReport() {
   const search = document.getElementById('rep-search').value.toLowerCase();
   const sort = document.getElementById('rep-sort').value;
@@ -6394,26 +6482,44 @@ function buildIncentivesReport() {
     if (!dMap[o.driver]) dMap[o.driver] = {
       name: o.driver,
       areas: {},
-      total: 0,        // حوافز الطلبات المحتسبة (مع موقع)
-      totalNoGeo: 0,   // حوافز الطلبات بدون موقع (غير محتسبة)
+      total: 0,          // حوافز الطلبات المحتسبة (مع موقع + المستثناة يدوياً)
+      totalNoGeo: 0,     // حوافز الطلبات بدون موقع (غير محتسبة)
       count: 0,
-      countNoGeo: 0
+      countNoGeo: 0,
+      countExcepted: 0,  // بدون موقع لكن مستثناة → محتسبة
+      ordersNoGeo: []    // قائمة الطلبات بدون موقع لعرض أزرار الاستثناء
     };
     const key     = o.area || '—';
     const hasGeo  = !!(o.deliveryLat && o.deliveryLng);
-    if (!dMap[o.driver].areas[key])
-      dMap[o.driver].areas[key] = { count:0, incentive:0, zone:o.zone||'', countNoGeo:0, incentiveNoGeo:0 };
+    const isExcepted = !hasGeo && geoExceptions.has(o.rowIndex); // بدون موقع لكن تم استثناؤه
 
-    if (hasGeo) {
+    if (!dMap[o.driver].areas[key])
+      dMap[o.driver].areas[key] = {
+        count:0, incentive:0, zone:o.zone||'',
+        countNoGeo:0, incentiveNoGeo:0,
+        countExcepted:0, incentiveExcepted:0,
+        ordersNoGeo:[]
+      };
+
+    if (hasGeo || isExcepted) {
+      // محتسب (موقع موجود أو استثناء يدوي)
       dMap[o.driver].areas[key].count++;
       dMap[o.driver].areas[key].incentive += (o.incentive || 0);
       dMap[o.driver].total  += (o.incentive || 0);
       dMap[o.driver].count++;
+      if (isExcepted) {
+        dMap[o.driver].areas[key].countExcepted++;
+        dMap[o.driver].areas[key].incentiveExcepted += (o.incentive || 0);
+        dMap[o.driver].countExcepted++;
+      }
     } else {
+      // غير محتسب (بدون موقع ولا استثناء)
       dMap[o.driver].areas[key].countNoGeo++;
       dMap[o.driver].areas[key].incentiveNoGeo += (o.incentive || 0);
+      dMap[o.driver].areas[key].ordersNoGeo.push(o);
       dMap[o.driver].totalNoGeo += (o.incentive || 0);
       dMap[o.driver].countNoGeo++;
+      dMap[o.driver].ordersNoGeo.push(o);
     }
   });
 
@@ -6426,46 +6532,83 @@ function buildIncentivesReport() {
   const totalNoGeoInc = drivers.reduce((s,d) => s + d.totalNoGeo, 0);
   const totalCounted  = drivers.reduce((s,d) => s + d.count, 0);
   const totalSkipped  = drivers.reduce((s,d) => s + d.countNoGeo, 0);
+  const totalExcepted = drivers.reduce((s,d) => s + d.countExcepted, 0);
 
   setKPIs([
     { label:'إجمالي الحوافز المحتسبة', val:Number(totalInc).toLocaleString('en-US')+' د.ع', color:'var(--gold)' },
     { label:'عدد السواق', val:drivers.length },
     { label:'الطلبات المحتسبة ✅', val:totalCounted, color:'var(--success)' },
-    { label:'طلبات بدون موقع ⚠️', val:totalSkipped, color:'var(--danger)' },
+    { label:'طلبات بدون موقع ⚠️', val:totalSkipped, color: totalSkipped > 0 ? 'var(--danger)' : 'var(--gray-400)' },
   ]);
 
   document.getElementById('rep-thead').innerHTML = `<tr>
     <th>#</th><th>السائق</th><th>المنطقة</th><th>الزون</th>
     <th>طلبات محتسبة ✅</th><th>حافز المنطقة</th>
-    <th>طلبات بدون موقع ⚠️</th><th>حافز مفقود</th>
+    <th>بدون موقع ⚠️</th><th>حافز مفقود</th>
     <th>إجمالي السائق</th></tr>`;
 
   let rows = '', counter = 1;
   drivers.forEach(d => {
     const areas = Object.entries(d.areas).sort((a,b) => b[1].incentive - a[1].incentive);
     const hasAnyNoGeo = d.countNoGeo > 0;
+    const hasAnyExcepted = d.countExcepted > 0;
     areas.forEach(([aname, a], idx) => {
-      const areaHasNoGeo = a.countNoGeo > 0;
+      const areaHasNoGeo     = a.countNoGeo > 0;
+      const areaHasExcepted  = a.countExcepted > 0;
+
+      // أزرار الاستثناء لكل طلب بدون موقع في هذه المنطقة
+      let exBtns = '';
+      if (areaHasNoGeo) {
+        exBtns = a.ordersNoGeo.map(o =>
+          `<button onclick="toggleGeoException(${o.rowIndex})"
+            title="اضغط لاستثناء هذا الطلب وإدراجه في الحافز"
+            style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;
+                   background:#fef2f2;color:#b91c1c;border:1.5px solid #fca5a5;border-radius:14px;
+                   padding:2px 8px;cursor:pointer;font-family:var(--font);margin:1px;white-space:nowrap;
+                   transition:background .15s,color .15s">
+            ⚠️ ${o.orderNum || '#'+o.rowIndex} — استثناء
+          </button>`
+        ).join('');
+      }
+
       rows += `<tr style="background:${idx===0 ? 'rgba(30,90,142,.04)' : ''}">
         <td style="color:var(--gray-400)">${idx===0 ? counter++ : ''}</td>
         <td style="font-weight:${idx===0?'800':'400'};color:${idx===0?'var(--gray-800)':'var(--gray-400)'}">
-          ${idx===0 ? d.name + (hasAnyNoGeo ? ' <span style="font-size:10px;background:#fef2f2;color:#b91c1c;border-radius:20px;padding:1px 7px;font-weight:700">⚠️ '+d.countNoGeo+' بدون موقع</span>' : '') : ''}
+          ${idx===0 ? d.name
+            + (hasAnyNoGeo    ? ' <span style="font-size:10px;background:#fef2f2;color:#b91c1c;border-radius:20px;padding:1px 7px;font-weight:700">⚠️ '+d.countNoGeo+' بدون موقع</span>' : '')
+            + (hasAnyExcepted ? ' <span style="font-size:10px;background:#e8f5e9;color:#1e6840;border-radius:20px;padding:1px 7px;font-weight:700">✅ '+d.countExcepted+' مستثنى</span>' : '')
+          : ''}
         </td>
         <td>${aname}</td>
         <td><span class="zone-badge-sm">زون ${a.zone||'—'}</span></td>
-        <td style="font-weight:700;color:var(--success)">${a.count || 0}</td>
-        <td style="font-weight:700;color:var(--gold)">${Number(a.incentive||0).toLocaleString('en-US')} د.ع</td>
-        <td style="font-weight:700;color:${areaHasNoGeo?'#b91c1c':'var(--gray-300)'}">
-          ${areaHasNoGeo ? a.countNoGeo : '—'}
+        <td style="font-weight:700;color:var(--success)">
+          ${a.count || 0}
+          ${areaHasExcepted ? '<span style="font-size:10px;color:#1e6840;background:#e8f5e9;border-radius:12px;padding:1px 5px;margin-right:3px">+'+a.countExcepted+' مستثنى</span>' : ''}
+        </td>
+        <td style="font-weight:700;color:var(--gold)">
+          ${Number(a.incentive||0).toLocaleString('en-US')} د.ع
+          ${areaHasExcepted ? '<span style="font-size:10px;color:#1e6840;display:block;font-weight:600">(يشمل +'+Number(a.incentiveExcepted||0).toLocaleString('en-US')+' د.ع مستثنى)</span>' : ''}
         </td>
         <td style="font-weight:700;color:${areaHasNoGeo?'#b91c1c':'var(--gray-300)'}">
-          ${areaHasNoGeo ? '<span style="text-decoration:line-through;opacity:.7">'+Number(a.incentiveNoGeo||0).toLocaleString('en-US')+' د.ع</span>' : '—'}
+          ${areaHasNoGeo
+            ? `<div style="display:flex;flex-direction:column;gap:3px">${exBtns}</div>`
+            : '—'}
+        </td>
+        <td style="font-weight:700;color:${areaHasNoGeo?'#b91c1c':'var(--gray-300)'}">
+          ${areaHasNoGeo
+            ? '<span style="text-decoration:line-through;opacity:.7">'+Number(a.incentiveNoGeo||0).toLocaleString('en-US')+' د.ع</span>'
+            : '—'}
         </td>
         <td style="font-weight:${idx===0?'900':'300'};color:${idx===0?'var(--accent)':'transparent'}">
           ${idx===0 ? `
-            <div style="display:flex;flex-direction:column;gap:1px">
-              <span>${Number(d.total).toLocaleString('en-US')} د.ع</span>
-              ${d.totalNoGeo > 0 ? '<span style="font-size:10px;color:#b91c1c;font-weight:700;text-decoration:line-through;opacity:.7">'+Number(d.totalNoGeo).toLocaleString('en-US')+' د.ع مفقود</span>' : ''}
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:14px">${Number(d.total).toLocaleString('en-US')} د.ع</span>
+              ${d.totalNoGeo > 0
+                ? '<span style="font-size:10px;color:#b91c1c;font-weight:700;text-decoration:line-through;opacity:.7">'+Number(d.totalNoGeo).toLocaleString('en-US')+' د.ع مفقود</span>'
+                : ''}
+              ${d.countExcepted > 0
+                ? '<span style="font-size:10px;color:#1e6840;font-weight:700">✅ يشمل '+d.countExcepted+' مستثنى</span>'
+                : ''}
             </div>` : ''}
         </td>
       </tr>`;
@@ -6477,15 +6620,26 @@ function buildIncentivesReport() {
   if (totalSkipped > 0) {
     rows += `<tr style="background:#fef2f2;border-top:2px solid #fca5a5">
       <td colspan="6" style="padding:10px 14px;font-size:13px;font-weight:800;color:#991b1b">
-        ⚠️ إجمالي الحوافز المفقودة بسبب رفض الموقع (${totalSkipped} طلب)
+        ⚠️ إجمالي الحوافز المفقودة بسبب رفض الموقع (${totalSkipped} طلب) — اضغط ⚠️ للاستثناء
       </td>
       <td colspan="3" style="padding:10px 14px;font-size:14px;font-weight:900;color:#b91c1c;text-decoration:line-through">
         ${Number(totalNoGeoInc).toLocaleString('en-US')} د.ع
       </td>
     </tr>`;
   }
+  if (totalExcepted > 0) {
+    rows += `<tr style="background:#e8f5e9;border-top:2px solid #a7d7b0">
+      <td colspan="6" style="padding:10px 14px;font-size:13px;font-weight:800;color:#1e6840">
+        ✅ طلبات مستثناة ومُدرجة في الحافز (${totalExcepted} طلب)
+      </td>
+      <td colspan="3" style="padding:10px 14px;font-size:13px;font-weight:700;color:#1e6840">
+        —
+      </td>
+    </tr>`;
+  }
 
   document.getElementById('rep-tbody').innerHTML = rows || '<tr><td colspan="9" class="empty-td">لا توجد نتائج للبحث</td></tr>';
+  updateGeoExceptionsUI();
 }
 
 function buildOrdersReport() {
@@ -7518,7 +7672,7 @@ async function drvDeliver(rowIndex, orderNum) {
       <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23c8922a' opacity='.15'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='32'%3E🍞%3C/text%3E%3C/svg%3E" alt="logo">
     </div>
     <h2 class="about-sys-name">نظام إدارة التوصيل</h2>
-    <p class="about-sys-ver">مخابز وحلويات سومر · الإصدار v1.34</p>
+    <p class="about-sys-ver">مخابز وحلويات سومر · الإصدار v1.35</p>
 
     <div class="about-divider"></div>
 
